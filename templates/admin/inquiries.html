@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>询价管理 - 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(180deg, #1a1a2e, #16213e);
+            color: #fff;
+            padding: 24px 0;
+            flex-shrink: 0;
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+        }
+        .sidebar .logo { padding: 0 24px; margin-bottom: 32px; font-size: 18px; font-weight: 700; }
+        .sidebar .logo span { color: #E84B36; }
+        .sidebar a {
+            display: flex; align-items: center;
+            padding: 12px 24px;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none; font-size: 14px;
+            transition: all 0.2s; gap: 10px;
+        }
+        .sidebar a:hover, .sidebar a.active { color: #fff; background: rgba(255,255,255,0.08); }
+        .sidebar a.active { border-right: 3px solid #E84B36; }
+        .sidebar a .icon { font-size: 18px; width: 24px; text-align: center; }
+        .main { margin-left: 220px; flex: 1; padding: 24px 32px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .top-bar h2 { font-size: 22px; color: #1a1a2e; }
+        .actions { display: flex; gap: 10px; }
+        .btn {
+            padding: 8px 18px; border-radius: 6px; font-size: 14px;
+            cursor: pointer; border: none; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #E84B36; color: #fff; }
+        .btn-primary:hover { background: #c0392b; }
+        .btn-outline { background: #fff; color: #333; border: 1px solid #ddd; }
+        .btn-outline:hover { border-color: #E84B36; color: #E84B36; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 5px 12px; font-size: 13px; }
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .filter-bar a {
+            padding: 6px 16px; border-radius: 20px; font-size: 13px;
+            text-decoration: none; color: #666;
+            background: #fff; border: 1px solid #eee;
+            transition: all 0.2s;
+        }
+        .filter-bar a:hover, .filter-bar a.active {
+            background: #E84B36; color: #fff; border-color: #E84B36;
+        }
+        /* 表格 */
+        .panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 12px; background: #f8f9fa; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #eee; }
+        td { padding: 12px 12px; font-size: 14px; color: #333; border-bottom: 1px solid #f0f0f0; }
+        tr:hover td { background: #fafafa; }
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: 500;
+        }
+        .badge.待处理 { background: #fff3cd; color: #856404; }
+        .badge.已报价 { background: #d1ecf1; color: #0c5460; }
+        .badge.已成交 { background: #d4edda; color: #155724; }
+        .badge.已关闭 { background: #e2e3e5; color: #383d41; }
+        .ops { display: flex; gap: 6px; }
+        .ops a, .ops form { display: inline; }
+        /* 分页 */
+        .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+        .pagination a, .pagination span {
+            padding: 6px 14px; border-radius: 6px; font-size: 13px;
+            text-decoration: none; color: #666;
+        }
+        .pagination a:hover { background: #f0f0f0; }
+        .pagination span { background: #E84B36; color: #fff; }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px; }
+            table { font-size: 12px; }
+            th, td { padding: 8px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo"><span>&#9670;</span> 精彩印刷</div>
+        <a href="/admin"><span class="icon">&#9776;</span> 工作台</a>
+        <a href="/admin/inquiries" class="active"><span class="icon">&#9993;</span> 询价管理</a>
+        <a href="/admin/products"><span class="icon">&#9733;</span> 产品管理</a>
+        <a href="/admin/messages"><span class="icon">&#9998;</span> 留言管理</a>
+        <a href="/" target="_blank"><span class="icon">&#9741;</span> 查看官网</a>
+    </nav>
+
+    <div class="main">
+        <div class="top-bar">
+            <h2>询价管理</h2>
+            <div class="actions">
+                <a href="/admin/inquiry/export" class="btn btn-outline">导出 CSV</a>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <a href="/admin/inquiries" class="{{ 'active' if not status_filter }}">全部</a>
+            <a href="/admin/inquiries?status=待处理" class="{{ 'active' if status_filter == '待处理' }}">待处理</a>
+            <a href="/admin/inquiries?status=已报价" class="{{ 'active' if status_filter == '已报价' }}">已报价</a>
+            <a href="/admin/inquiries?status=已成交" class="{{ 'active' if status_filter == '已成交' }}">已成交</a>
+            <a href="/admin/inquiries?status=已关闭" class="{{ 'active' if status_filter == '已关闭' }}">已关闭</a>
+        </div>
+
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>姓名</th><th>电话</th><th>公司</th><th>产品类型</th>
+                        <th>尺寸(mm)</th><th>数量</th><th>状态</th><th>时间</th><th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in inquiries %}
+                    <tr>
+                        <td>#{{ i.id }}</td>
+                        <td>{{ i.name }}</td>
+                        <td>{{ i.phone }}</td>
+                        <td>{{ i.company or '-' }}</td>
+                        <td>{{ i.product_type }}</td>
+                        <td>{% if i.length %}{{ i.length }}×{{ i.width }}{% if i.height %}×{{ i.height }}{% endif %}{% else %}-{% endif %}</td>
+                        <td>{{ i.quantity }}</td>
+                        <td><span class="badge {{ i.status }}">{{ i.status }}</span></td>
+                        <td>{{ i.created_at.strftime('%m-%d %H:%M') if i.created_at else '' }}</td>
+                        <td class="ops">
+                            <a href="/admin/inquiry/{{ i.id }}" class="btn btn-primary btn-sm">详情</a>
+                            <form method="POST" action="/admin/inquiry/{{ i.id }}/delete" onsubmit="return confirm('确认删除？')">
+                                <button class="btn btn-danger btn-sm">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10" style="text-align:center;color:#999;padding:40px;">暂无询价记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if pagination.pages > 1 %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('admin_inquiries', page=pagination.prev_num, status=status_filter) }}">上一页</a>
+                {% endif %}
+                {% for p in pagination.iter_pages() %}
+                    {% if p %}
+                        {% if p == pagination.page %}
+                            <span>{{ p }}</span>
+                        {% else %}
+                            <a href="{{ url_for('admin_inquiries', page=p, status=status_filter) }}">{{ p }}</a>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('admin_inquiries', page=pagination.next_num, status=status_filter) }}">下一页</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

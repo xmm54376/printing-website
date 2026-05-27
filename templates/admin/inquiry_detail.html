@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>询价详情 - 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f0f2f5;
+            display: flex; min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px; background: linear-gradient(180deg, #1a1a2e, #16213e);
+            color: #fff; padding: 24px 0; flex-shrink: 0;
+            position: fixed; top: 0; left: 0; height: 100vh;
+        }
+        .sidebar .logo { padding: 0 24px; margin-bottom: 32px; font-size: 18px; font-weight: 700; }
+        .sidebar .logo span { color: #E84B36; }
+        .sidebar a {
+            display: flex; align-items: center; padding: 12px 24px;
+            color: rgba(255,255,255,0.6); text-decoration: none;
+            font-size: 14px; transition: all 0.2s; gap: 10px;
+        }
+        .sidebar a:hover, .sidebar a.active { color: #fff; background: rgba(255,255,255,0.08); }
+        .sidebar a.active { border-right: 3px solid #E84B36; }
+        .sidebar a .icon { font-size: 18px; width: 24px; text-align: center; }
+        .main { margin-left: 220px; flex: 1; padding: 24px 32px; }
+        .breadcrumb { margin-bottom: 24px; font-size: 14px; color: #888; }
+        .breadcrumb a { color: #E84B36; text-decoration: none; }
+        .btn {
+            padding: 8px 18px; border-radius: 6px; font-size: 14px;
+            cursor: pointer; border: none; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+        }
+        .btn-primary { background: #E84B36; color: #fff; }
+        .btn-primary:hover { background: #c0392b; }
+        .btn-outline { background: #fff; color: #333; border: 1px solid #ddd; }
+        .detail-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+        }
+        .panel {
+            background: #fff; border-radius: 12px; padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+        .panel h3 {
+            font-size: 16px; color: #1a1a2e; margin-bottom: 20px;
+            padding-bottom: 12px; border-bottom: 1px solid #eee;
+        }
+        .info-row {
+            display: flex; padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label {
+            width: 100px; flex-shrink: 0; color: #888;
+            font-size: 14px;
+        }
+        .info-value { color: #333; font-size: 14px; flex: 1; }
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: 500;
+        }
+        .badge.待处理 { background: #fff3cd; color: #856404; }
+        .badge.已报价 { background: #d1ecf1; color: #0c5460; }
+        .badge.已成交 { background: #d4edda; color: #155724; }
+        .badge.已关闭 { background: #e2e3e5; color: #383d41; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; font-size: 13px; color: #666;
+            margin-bottom: 6px;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 10px 14px;
+            border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; outline: none;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            border-color: #E84B36;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px; }
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo"><span>&#9670;</span> 精彩印刷</div>
+        <a href="/admin"><span class="icon">&#9776;</span> 工作台</a>
+        <a href="/admin/inquiries" class="active"><span class="icon">&#9993;</span> 询价管理</a>
+        <a href="/admin/products"><span class="icon">&#9733;</span> 产品管理</a>
+        <a href="/admin/messages"><span class="icon">&#9998;</span> 留言管理</a>
+    </nav>
+
+    <div class="main">
+        <div class="breadcrumb">
+            <a href="/admin/inquiries">询价管理</a> / #{{ inquiry.id }}
+        </div>
+
+        <div class="detail-grid">
+            <!-- 左：客户询价信息 -->
+            <div class="panel">
+                <h3>询价信息 #{{ inquiry.id }}</h3>
+                <div class="info-row">
+                    <div class="info-label">状态</div>
+                    <div class="info-value"><span class="badge {{ inquiry.status }}">{{ inquiry.status }}</span></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">姓名</div>
+                    <div class="info-value">{{ inquiry.name }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">电话</div>
+                    <div class="info-value"><a href="tel:{{ inquiry.phone }}">{{ inquiry.phone }}</a></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">公司</div>
+                    <div class="info-value">{{ inquiry.company or '-' }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">产品类型</div>
+                    <div class="info-value">{{ inquiry.product_type }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">尺寸</div>
+                    <div class="info-value">
+                        {% if inquiry.length %}
+                            {{ inquiry.length }} × {{ inquiry.width }}{% if inquiry.height %} × {{ inquiry.height }}{% endif %} mm
+                        {% else %}
+                            未指定
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">数量</div>
+                    <div class="info-value">{{ inquiry.quantity }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">材质</div>
+                    <div class="info-value">{{ inquiry.material or '-' }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">工艺</div>
+                    <div class="info-value">{{ inquiry.craft or '-' }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">备注</div>
+                    <div class="info-value">{{ inquiry.remark or '-' }}</div>
+                </div>
+                {% if inquiry.file_name %}
+                <div class="info-row">
+                    <div class="info-label">上传文件</div>
+                    <div class="info-value"><a href="/static/uploads/{{ inquiry.file_name }}" target="_blank">{{ inquiry.file_name }}</a></div>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <div class="info-label">提交时间</div>
+                    <div class="info-value">{{ inquiry.created_at.strftime('%Y-%m-%d %H:%M:%S') if inquiry.created_at else '' }}</div>
+                </div>
+            </div>
+
+            <!-- 右：报价处理 -->
+            <div class="panel">
+                <h3>处理询价</h3>
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for msg in messages %}
+                            <div style="background:#d4edda;color:#155724;padding:10px;border-radius:8px;margin-bottom:16px;font-size:14px;">{{ msg }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                <form method="POST">
+                    <div class="form-group">
+                        <label>状态</label>
+                        <select name="status">
+                            {% for s in ['待处理', '已报价', '已成交', '已关闭'] %}
+                            <option value="{{ s }}" {{ 'selected' if s == inquiry.status }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>报价金额 (元)</label>
+                        <input type="number" name="quote_price" step="0.01"
+                               value="{{ inquiry.quote_price if inquiry.quote_price else '' }}"
+                               placeholder="输入报价金额">
+                    </div>
+                    <div class="form-group">
+                        <label>报价备注</label>
+                        <textarea name="quote_remark" placeholder="报价说明、工艺详情等">{{ inquiry.quote_remark or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">保存更新</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

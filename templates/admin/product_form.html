@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ '编辑产品' if product else '添加产品' }} - 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: linear-gradient(180deg, #1a1a2e, #16213e); color: #fff; padding: 24px 0; flex-shrink: 0; position: fixed; top: 0; left: 0; height: 100vh; }
+        .sidebar .logo { padding: 0 24px; margin-bottom: 32px; font-size: 18px; font-weight: 700; }
+        .sidebar .logo span { color: #E84B36; }
+        .sidebar a { display: flex; align-items: center; padding: 12px 24px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; transition: all 0.2s; gap: 10px; }
+        .sidebar a:hover, .sidebar a.active { color: #fff; background: rgba(255,255,255,0.08); }
+        .sidebar a.active { border-right: 3px solid #E84B36; }
+        .sidebar a .icon { font-size: 18px; width: 24px; text-align: center; }
+        .main { margin-left: 220px; flex: 1; padding: 24px 32px; }
+        .breadcrumb { margin-bottom: 24px; font-size: 14px; color: #888; }
+        .breadcrumb a { color: #E84B36; text-decoration: none; }
+        .panel { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); max-width: 600px; }
+        .panel h3 { font-size: 18px; color: #1a1a2e; margin-bottom: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group textarea:focus { border-color: #E84B36; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+        .btn { padding: 10px 24px; border-radius: 8px; font-size: 15px; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: #E84B36; color: #fff; }
+        .btn-primary:hover { background: #c0392b; }
+        .btn-outline { background: #fff; color: #333; border: 1px solid #ddd; }
+        .btn-outline:hover { border-color: #E84B36; color: #E84B36; }
+        .form-actions { display: flex; gap: 12px; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo"><span>&#9670;</span> 精彩印刷</div>
+        <a href="/admin"><span class="icon">&#9776;</span> 工作台</a>
+        <a href="/admin/inquiries"><span class="icon">&#9993;</span> 询价管理</a>
+        <a href="/admin/products" class="active"><span class="icon">&#9733;</span> 产品管理</a>
+        <a href="/admin/messages"><span class="icon">&#9998;</span> 留言管理</a>
+    </nav>
+
+    <div class="main">
+        <div class="breadcrumb">
+            <a href="/admin/products">产品管理</a> / {{ '编辑' if product else '添加' }}
+        </div>
+
+        <div class="panel">
+            <h3>{{ '编辑产品' if product else '添加产品' }}</h3>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>产品名称 *</label>
+                    <input type="text" name="name" value="{{ product.name if product else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label>产品分类 *</label>
+                    <select name="category" required>
+                        <option value="">请选择分类</option>
+                        {% for cat in ['名片', '画册', '彩页', '海报', '手提袋', '纸盒', '不干胶', '吊牌'] %}
+                        <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>产品描述</label>
+                    <textarea name="description">{{ product.description if product else '' }}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>起步价 (元)</label>
+                        <input type="number" name="min_price" step="0.01" value="{{ product.min_price if product else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>计价单位</label>
+                        <input type="text" name="unit" value="{{ product.unit if product else '个' }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>排序序号</label>
+                    <input type="number" name="sort_order" value="{{ product.sort_order if product else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>产品图片</label>
+                    <input type="file" name="image" accept="image/*">
+                    {% if product and product.image %}
+                    <div style="margin-top:8px;">
+                        <img src="{{ product.image }}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;">
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">{{ '保存修改' if product else '添加产品' }}</button>
+                    <a href="/admin/products" class="btn btn-outline">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
