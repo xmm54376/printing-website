@@ -5,6 +5,7 @@
 
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -92,6 +93,38 @@ class SiteConfig(db.Model):
     key = db.Column(db.String(50), unique=True, nullable=False, comment='配置键')
     value = db.Column(db.Text, comment='配置值')
     description = db.Column(db.String(200), comment='配置说明')
+
+
+class User(db.Model):
+    """后台用户表"""
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False, comment='用户名')
+    password_hash = db.Column(db.String(200), nullable=False, comment='密码哈希')
+    real_name = db.Column(db.String(50), comment='真实姓名')
+    role = db.Column(db.String(20), default='staff', comment='角色: admin/super_admin')
+    is_active = db.Column(db.Boolean, default=True, comment='是否启用')
+    last_login = db.Column(db.DateTime, comment='最后登录时间')
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'real_name': self.real_name or '',
+            'role': self.role,
+            'role_display': '超级管理员' if self.role == 'super_admin' else '普通客服',
+            'is_active': self.is_active,
+            'last_login': self.last_login.strftime('%Y-%m-%d %H:%M') if self.last_login else '从未登录',
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
+        }
 
 
 class ContactMessage(db.Model):

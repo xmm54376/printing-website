@@ -4,6 +4,7 @@
 """
 
 import os
+from datetime import datetime
 from functools import wraps
 from flask import (
     Flask, render_template, request, jsonify,
@@ -12,7 +13,7 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from config import Config
-from models import db, Inquiry, Product, ContactMessage, SiteConfig
+from models import db, Inquiry, Product, ContactMessage, SiteConfig, User
 
 
 def create_app():
@@ -184,11 +185,16 @@ def create_app():
     @app.route('/admin/login', methods=['GET', 'POST'])
     def admin_login():
         if request.method == 'POST':
-            username = request.form.get('username', '')
+            username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
-            if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+            user = User.query.filter_by(username=username, is_active=True).first()
+            if user and user.check_password(password):
                 session['is_admin'] = True
-                session['admin_user'] = username
+                session['admin_user'] = user.real_name or user.username
+                session['admin_role'] = user.role
+                session['admin_uid'] = user.id
+                user.last_login = datetime.now()
+                db.session.commit()
                 return redirect(url_for('admin_dashboard'))
             flash('用户名或密码错误')
         return render_template('admin/login.html')
@@ -382,6 +388,82 @@ def create_app():
         db.session.commit()
         return jsonify({'success': True})
 
+    # --- 用户管理 ---
+    def super_admin_required(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if session.get('admin_role') != 'super_admin':
+                flash('仅超级管理员可执行此操作')
+                return redirect(url_for('admin_dashboard'))
+            return f(*args, **kwargs)
+        return decorated
+
+    @app.route('/admin/users')
+    @login_required
+    def admin_users():
+        users = User.query.order_by(User.created_at).all()
+        return render_template('admin/users.html', users=users)
+
+    @app.route('/admin/user/add', methods=['POST'])
+    @login_required
+    @super_admin_required
+    def admin_add_user():
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        real_name = request.form.get('real_name', '').strip()
+        role = request.form.get('role', 'staff')
+
+        if not username or not password:
+            return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
+        if len(password) < 4:
+            return jsonify({'success': False, 'message': '密码至少4位'}), 400
+        if User.query.filter_by(username=username).first():
+            return jsonify({'success': False, 'message': '用户名已存在'}), 400
+
+        user = User(username=username, real_name=real_name, role=role)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'用户 {username} 创建成功'})
+
+    @app.route('/admin/user/<int:uid>/toggle', methods=['POST'])
+    @login_required
+    @super_admin_required
+    def admin_toggle_user(uid):
+        if uid == session.get('admin_uid'):
+            return jsonify({'success': False, 'message': '不能禁用自己的账号'}), 400
+        user = User.query.get_or_404(uid)
+        if user.role == 'super_admin':
+            return jsonify({'success': False, 'message': '不能禁用超级管理员'}), 400
+        user.is_active = not user.is_active
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': user.is_active})
+
+    @app.route('/admin/user/<int:uid>/reset-password', methods=['POST'])
+    @login_required
+    @super_admin_required
+    def admin_reset_password(uid):
+        new_pwd = request.form.get('new_password', '').strip()
+        if len(new_pwd) < 4:
+            return jsonify({'success': False, 'message': '新密码至少4位'}), 400
+        user = User.query.get_or_404(uid)
+        user.set_password(new_pwd)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'用户 {user.username} 密码已重置'})
+
+    @app.route('/admin/user/<int:uid>/delete', methods=['POST'])
+    @login_required
+    @super_admin_required
+    def admin_delete_user(uid):
+        if uid == session.get('admin_uid'):
+            return jsonify({'success': False, 'message': '不能删除自己的账号'}), 400
+        user = User.query.get_or_404(uid)
+        if user.role == 'super_admin':
+            return jsonify({'success': False, 'message': '不能删除超级管理员'}), 400
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'用户 {user.username} 已删除'})
+
     # --- 统计图表数据 ---
     @app.route('/admin/api/stats')
     @login_required
@@ -412,7 +494,16 @@ def create_app():
 
 
 def _init_default_data():
-    """初始化默认产品数据"""
+    """初始化默认产品数据和默认管理员"""
+    # 初始化默认超级管理员
+    if User.query.filter_by(role='super_admin').count() == 0:
+        admin = User(username='admin', real_name='超级管理员', role='super_admin')
+        admin.set_password('admin888')
+        db.session.add(admin)
+        db.session.commit()
+        print('✅ 默认管理员已创建 (admin / admin888)')
+
+    # 初始化默认产品数据
     if Product.query.count() == 0:
         defaults = [
             ('名片印刷', '名片', '高品质名片，多种材质工艺可选，支持UV、烫金、击凸等特殊工艺', 50, '盒', 1),
