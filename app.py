@@ -42,6 +42,12 @@ def create_app():
     _register_api_routes(app)
     _register_admin_routes(app)
 
+    # 自定义404错误处理
+    @app.errorhandler(404)
+    def page_not_found(e):
+        cfg = get_site_config()
+        return render_template('404.html', cfg=cfg), 404
+
     return app
 
 
@@ -384,6 +390,62 @@ def _register_frontend_routes(app):
             flash('个人信息已更新', 'success')
         cfg = get_site_config()
         return render_template('user/profile.html', user=user, cfg=cfg)
+
+    @app.route('/user/change-password', methods=['POST'])
+    @front_login_required
+    def user_change_password():
+        user = FrontUser.query.get(session['user_id'])
+        old_pw = request.form.get('old_password', '')
+        new_pw = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        if not user.check_password(old_pw):
+            flash('当前密码错误', 'error')
+            return redirect(url_for('user_profile'))
+        if len(new_pw) < 8:
+            flash('新密码至少8位', 'error')
+            return redirect(url_for('user_profile'))
+        if new_pw != confirm_pw:
+            flash('两次输入的新密码不一致', 'error')
+            return redirect(url_for('user_profile'))
+        user.set_password(new_pw)
+        db.session.commit()
+        flash('密码修改成功', 'success')
+        return redirect(url_for('user_profile'))
+
+    @app.route('/user/inquiry/<int:iid>')
+    @front_login_required
+    def user_inquiry_detail(iid):
+        inquiry = Inquiry.query.get_or_404(iid)
+        if inquiry.user_id != session['user_id']:
+            flash('无权查看该询价', 'error')
+            return redirect(url_for('user_inquiries'))
+        cfg = get_site_config()
+        return render_template('user/inquiry_detail.html', inquiry=inquiry, cfg=cfg)
+
+    @app.route('/user/order/<int:oid>')
+    @front_login_required
+    def user_order_detail(oid):
+        order = Order.query.get_or_404(oid)
+        if order.user_id != session['user_id']:
+            flash('无权查看该订单', 'error')
+            return redirect(url_for('user_orders'))
+        cfg = get_site_config()
+        return render_template('user/order_detail.html', order=order, cfg=cfg)
+
+    @app.route('/forgot-password')
+    def forgot_password():
+        cfg = get_site_config()
+        return render_template('forgot_password.html', cfg=cfg)
+
+    @app.route('/terms')
+    def terms():
+        cfg = get_site_config()
+        return render_template('terms.html', cfg=cfg)
+
+    @app.route('/privacy')
+    def privacy():
+        cfg = get_site_config()
+        return render_template('privacy.html', cfg=cfg)
 
 
 def _register_api_routes(app):

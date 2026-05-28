@@ -309,7 +309,11 @@ section { padding: 72px 0; }
 /* ============================================================
    在线报价页
    ============================================================ */
-body:has(.offer-page) { padding-top: var(--header-h); }
+/* Modern browsers: offer-page padding-top */
+@supports selector(:has(*)) {
+  body:has(.offer-page) { padding-top: var(--header-h); }
+}
+/* Fallback: applied via JS for older browsers */
 .offer-breadcrumb { background: var(--bg-gray); border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; color: var(--text-muted); }
 .offer-breadcrumb a { color: var(--text-muted); }
 .offer-breadcrumb a:hover { color: var(--primary); }

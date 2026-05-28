@@ -159,7 +159,15 @@
   counterEls.forEach(function (el) { counterIO.observe(el); });
 
   /* ===================================================
-     7. 旋转动画 CSS 注入
+     8. offer页面兼容处理
+  =================================================== */
+  // 为不支持 :has() 的浏览器提供padding-top
+  if (document.querySelector('.offer-page')) {
+    document.body.style.paddingTop = 'var(--header-h)';
+  }
+
+  /* ===================================================
+     9. 旋转动画 CSS 注入
   =================================================== */
   const extraStyles = document.createElement('style');
   extraStyles.textContent = [
@@ -169,7 +177,7 @@
   document.head.appendChild(extraStyles);
 
   /* ===================================================
-     8. 初始化完成日志
+     10. 初始化完成日志
   =================================================== */
   console.log('[精彩印刷] 主脚本加载完成 ✓');
 

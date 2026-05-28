@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}服务条款 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.terms-page { padding-top: calc(var(--header-h) + 24px); padding-bottom: 60px; min-height: 80vh; }
+.terms-card { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px 40px; box-shadow: var(--shadow-lg); }
+.terms-card h1 { font-size: 28px; font-weight: 900; color: var(--secondary); margin-bottom: 8px; }
+.terms-card .update-time { font-size: .85rem; color: var(--text-light); margin-bottom: 32px; }
+.terms-card h2 { font-size: 1.15rem; font-weight: 700; color: var(--secondary); margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--primary); }
+.terms-card h3 { font-size: 1rem; font-weight: 600; color: #333; margin: 20px 0 8px; }
+.terms-card p { font-size: .92rem; color: #555; line-height: 1.9; margin-bottom: 14px; }
+.terms-card ul, .terms-card ol { padding-left: 24px; margin-bottom: 14px; }
+.terms-card li { font-size: .92rem; color: #555; line-height: 1.8; margin-bottom: 6px; }
+.terms-back { text-align: center; margin-top: 32px; }
+@media (max-width: 640px) {
+  .terms-card { padding: 28px 20px; margin: 0 12px; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="terms-page">
+  <div class="container">
+    <div class="terms-card">
+      <h1>服务条款</h1>
+      <p class="update-time">最后更新：2025年1月1日</p>
+
+      <h2>一、总则</h2>
+      <p>欢迎使用{{ cfg.site_name }}（以下简称"本平台"）提供的印刷服务。本服务条款适用于您使用本平台的所有服务。请您仔细阅读以下条款，使用本平台服务即表示您同意接受以下条款的约束。</p>
+
+      <h2>二、服务内容</h2>
+      <p>本平台提供以下服务：</p>
+      <ul>
+        <li>在线印刷报价服务</li>
+        <li>印刷产品定制与生产服务</li>
+        <li>通用现货产品销售服务</li>
+        <li>客户咨询与售后支持服务</li>
+      </ul>
+
+      <h2>三、用户注册</h2>
+      <p>1. 用户需提供真实、准确、完整的注册信息。</p>
+      <p>2. 用户应妥善保管账户信息，因账户信息泄露导致的损失由用户自行承担。</p>
+      <p>3. 用户不得将账户转让、出借给第三方使用。</p>
+
+      <h2>四、订单与交易</h2>
+      <p>1. 用户提交的订单需经本平台确认后生效。</p>
+      <p>2. 印刷产品因工艺特殊性，实际成品可能与设计稿存在微小差异，此属正常范围。</p>
+      <p>3. 订单价格以最终确认的报价为准，网站展示价格仅供参考。</p>
+
+      <h2>五、知识产权</h2>
+      <p>1. 用户上传的设计文件，其知识产权归用户所有。</p>
+      <p>2. 本平台对用户上传的设计文件负有保密义务，不得用于除订单生产之外的其他用途。</p>
+      <p>3. 本平台网站内容（包括但不限于文字、图片、标识）受知识产权法保护，未经授权不得复制使用。</p>
+
+      <h2>六、免责声明</h2>
+      <p>1. 因不可抗力（如自然灾害、政策变化等）导致的订单延迟或无法履行，本平台不承担责任。</p>
+      <p>2. 因用户提供的文件格式、内容不符合印刷要求导致的问题，由用户自行承担。</p>
+
+      <h2>七、联系方式</h2>
+      <p>如有任何疑问，请联系我们：</p>
+      <p>电话：{{ cfg.site_phone }}<br>邮箱：{{ cfg.site_email or '暂无' }}</p>
+
+      <div class="terms-back">
+        <a href="/register" class="btn btn-primary">返回注册</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

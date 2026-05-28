@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}隐私政策 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.privacy-page { padding-top: calc(var(--header-h) + 24px); padding-bottom: 60px; min-height: 80vh; }
+.privacy-card { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px 40px; box-shadow: var(--shadow-lg); }
+.privacy-card h1 { font-size: 28px; font-weight: 900; color: var(--secondary); margin-bottom: 8px; }
+.privacy-card .update-time { font-size: .85rem; color: var(--text-light); margin-bottom: 32px; }
+.privacy-card h2 { font-size: 1.15rem; font-weight: 700; color: var(--secondary); margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--primary); }
+.privacy-card p { font-size: .92rem; color: #555; line-height: 1.9; margin-bottom: 14px; }
+.privacy-card ul { padding-left: 24px; margin-bottom: 14px; }
+.privacy-card li { font-size: .92rem; color: #555; line-height: 1.8; margin-bottom: 6px; }
+.privacy-back { text-align: center; margin-top: 32px; }
+@media (max-width: 640px) {
+  .privacy-card { padding: 28px 20px; margin: 0 12px; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="privacy-page">
+  <div class="container">
+    <div class="privacy-card">
+      <h1>隐私政策</h1>
+      <p class="update-time">最后更新：2025年1月1日</p>
+
+      <h2>一、信息收集</h2>
+      <p>我们收集以下类型的信息以提供更好的服务：</p>
+      <ul>
+        <li>注册信息：用户名、手机号、真实姓名、公司名称</li>
+        <li>订单信息：产品需求、联系方式、收货地址</li>
+        <li>设备信息：浏览器类型、IP地址、访问时间</li>
+      </ul>
+
+      <h2>二、信息使用</h2>
+      <p>我们收集的信息将用于：</p>
+      <ul>
+        <li>处理订单和提供客户服务</li>
+        <li>发送订单状态通知</li>
+        <li>改善网站服务和用户体验</li>
+        <li>遵守法律法规要求</li>
+      </ul>
+
+      <h2>三、信息保护</h2>
+      <p>1. 我们采用行业标准的加密技术保护用户数据安全。</p>
+      <p>2. 用户密码经过加密存储，我们无法查看您的原始密码。</p>
+      <p>3. 未经用户同意，我们不会将个人信息出售或分享给第三方。</p>
+
+      <h2>四、信息保存</h2>
+      <p>我们将在提供服务的必要期限内保留用户的个人信息。用户可以要求删除账户及关联信息。</p>
+
+      <h2>五、Cookie 使用</h2>
+      <p>本网站使用 Cookie 来维护用户的登录状态和改善浏览体验。您可以通过浏览器设置管理 Cookie。</p>
+
+      <h2>六、联系方式</h2>
+      <p>如有隐私相关问题，请联系我们：</p>
+      <p>电话：{{ cfg.site_phone }}<br>邮箱：{{ cfg.site_email or '暂无' }}</p>
+
+      <div class="privacy-back">
+        <a href="/register" class="btn btn-primary">返回注册</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
