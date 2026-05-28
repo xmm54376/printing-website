@@ -48,6 +48,15 @@ def create_app():
         cfg = get_site_config()
         return render_template('404.html', cfg=cfg), 404
 
+    # robots.txt 和 sitemap.xml
+    @app.route('/robots.txt')
+    def robots_txt():
+        return app.send_static_file('robots.txt')
+
+    @app.route('/sitemap.xml')
+    def sitemap_xml():
+        return app.send_static_file('sitemap.xml')
+
     return app
 
 

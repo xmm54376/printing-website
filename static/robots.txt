@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jingcaiprint.com/sitemap.xml
