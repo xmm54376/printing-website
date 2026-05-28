@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}活动中心 - {{ cfg.site_name }}{% endblock %}
+{% block desc %}{{ cfg.site_name }}活动中心，优惠券领取，最新促销活动{% endblock %}
+
+{% block extra_head %}
+<style>
+.activity-page { background: #f7f8fa; min-height: 60vh; }
+.page-hero {
+  background: linear-gradient(135deg, #E84B36 0%, #ff7043 50%, #ff9800 100%);
+  color: #fff; padding: 56px 0 40px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.page-hero::before {
+  content: '🎉'; position: absolute; font-size: 8rem; opacity: .07;
+  top: -20px; right: 5%; pointer-events: none;
+}
+.page-hero h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; }
+.page-hero p { opacity: .85; font-size: 1rem; }
+
+.activity-body { padding: 48px 0 64px; }
+.section-block { margin-bottom: 56px; }
+.section-block-title {
+  font-size: 1.3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-block-title::before { content: ''; display: block; width: 4px; height: 22px; background: #E84B36; border-radius: 2px; }
+
+/* 优惠券 */
+.coupon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.coupon-card {
+  background: #fff; border-radius: 14px; display: flex; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08); position: relative;
+}
+.coupon-card::after {
+  content: ''; position: absolute; left: calc(100px - 10px); top: 0; bottom: 0;
+  width: 20px; background: radial-gradient(circle at left, #f7f8fa 50%, transparent 50%) 0 0 / 20px 20px repeat-y;
+}
+.coupon-left {
+  width: 100px; flex-shrink: 0; background: linear-gradient(135deg, #E84B36, #ff7043);
+  color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px 10px; text-align: center;
+}
+.coupon-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+.coupon-value .unit { font-size: 1rem; font-weight: 400; }
+.coupon-type { font-size: .75rem; opacity: .85; margin-top: 4px; }
+.coupon-right { flex: 1; padding: 16px 20px 16px 28px; }
+.coupon-name { font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: #1a1a1a; }
+.coupon-cond { font-size: .82rem; color: #888; margin-bottom: 8px; }
+.coupon-expire { font-size: .78rem; color: #aaa; margin-bottom: 12px; }
+.coupon-code-row { display: flex; align-items: center; gap: 8px; }
+.coupon-code {
+  font-family: monospace; font-size: .9rem; font-weight: 700; color: #E84B36;
+  background: #fef2f0; padding: 5px 12px; border-radius: 6px; border: 1.5px dashed #E84B36;
+  letter-spacing: .05em;
+}
+.coupon-copy {
+  background: #E84B36; color: #fff; border: none; border-radius: 6px;
+  padding: 5px 12px; font-size: .82rem; cursor: pointer; transition: background .2s;
+}
+.coupon-copy:hover { background: #c73e2c; }
+.coupon-copy.copied { background: #22c55e; }
+
+/* 折扣型 */
+.coupon-card.discount .coupon-left { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+/* 已过期 */
+.coupon-card.expired { filter: grayscale(.7); opacity: .65; pointer-events: none; }
+
+/* 活动文章 */
+.activity-articles { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.activity-article-card {
+  background: #fff; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); text-decoration: none; color: inherit;
+  transition: transform .2s;
+}
+.activity-article-card:hover { transform: translateY(-4px); }
+.act-article-img {
+  aspect-ratio: 16/9; background: linear-gradient(135deg, #E84B36 0%, #ff7043 100%);
+  display: flex; align-items: center; justify-content: center; font-size: 3rem;
+}
+.act-article-body { padding: 18px; }
+.act-article-tag { font-size: .75rem; color: #E84B36; font-weight: 600; margin-bottom: 8px; }
+.act-article-title { font-size: 1rem; font-weight: 700; color: #1a1a1a; line-height: 1.5; margin-bottom: 8px; }
+.act-article-date { font-size: .8rem; color: #aaa; }
+
+.empty-coupons { text-align: center; padding: 40px; color: #aaa; background: #fff; border-radius: 14px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="activity-page">
+  <!-- 页头 -->
+  <div class="page-hero">
+    <div class="container">
+      <h1>🎉 活动中心</h1>
+      <p>限时优惠，领券享折扣，与您共创双赢</p>
+    </div>
+  </div>
+
+  <div class="container activity-body">
+    <!-- 优惠券区域 -->
+    <div class="section-block">
+      <div class="section-block-title">优惠券领取</div>
+      {% if coupons %}
+      <div class="coupon-grid">
+        {% for c in coupons %}
+        {% set is_expired = c.valid_until and c.valid_until < now %}
+        <div class="coupon-card {% if c.discount_type == 'percent' %}discount{% endif %} {% if is_expired %}expired{% endif %}">
+          <div class="coupon-left">
+            {% if c.discount_type == 'fixed' %}
+            <div class="coupon-value"><span class="unit">¥</span>{{ c.discount_value }}</div>
+            <div class="coupon-type">满减券</div>
+            {% elif c.discount_type == 'percent' %}
+            <div class="coupon-value">{{ (c.discount_value * 10)|round(1) }}<span class="unit">折</span></div>
+            <div class="coupon-type">折扣券</div>
+            {% else %}
+            <div class="coupon-value">优惠</div>
+            <div class="coupon-type">活动券</div>
+            {% endif %}
+          </div>
+          <div class="coupon-right">
+            <div class="coupon-name">{{ c.name }}</div>
+            {% if c.min_order %}
+            <div class="coupon-cond">满 ¥{{ c.min_order }} 可用</div>
+            {% endif %}
+            <div class="coupon-expire">
+              {% if is_expired %}
+              <span style="color:#ef4444;">已过期</span>
+              {% elif c.valid_until %}
+              有效期至 {{ c.valid_until.strftime('%Y-%m-%d') if c.valid_until else '长期有效' }}
+              {% else %}
+              长期有效
+              {% endif %}
+            </div>
+            {% if c.code %}
+            <div class="coupon-code-row">
+              <span class="coupon-code" id="code-{{ c.id }}">{{ c.code }}</span>
+              <button class="coupon-copy" onclick="copyCoupon('{{ c.code }}', this)">复制</button>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-coupons">
+        <div style="font-size:2.5rem;margin-bottom:12px;">🎫</div>
+        <p>暂无可用优惠券，敬请期待</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 活动文章 -->
+    {% if articles %}
+    <div class="section-block">
+      <div class="section-block-title">最新活动</div>
+      <div class="activity-articles">
+        {% for a in articles %}
+        <a href="/guide/{{ a.id }}" class="activity-article-card animate-in" style="animation-delay:{{ loop.index0 * 0.07 }}s">
+          <div class="act-article-img">🎁</div>
+          <div class="act-article-body">
+            <div class="act-article-tag">活动资讯</div>
+            <div class="act-article-title">{{ a.title }}</div>
+            <div class="act-article-date">{{ a.created_at.strftime('%Y-%m-%d') if a.created_at else '' }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 联系获取更多优惠 -->
+    <div style="background:linear-gradient(135deg,#E84B36,#ff9800);border-radius:20px;padding:40px;text-align:center;color:#fff;">
+      <h3 style="font-size:1.5rem;margin-bottom:10px;">更多优惠，联系客服</h3>
+      <p style="opacity:.85;margin-bottom:20px;">大批量订单享受专属折扣，联系客服获取报价</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="tel:{{ cfg.site_phone }}" class="btn" style="background:#fff;color:#E84B36;border:none;">
+          📞 {{ cfg.site_phone }}
+        </a>
+        <a href="/offer" class="btn" style="background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6);">
+          立即报价
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyCoupon(code, btn) {
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    // 降级方案
+    const el = document.createElement('input');
+    el.value = code;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+{% endblock %}

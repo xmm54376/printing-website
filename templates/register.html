@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}用户注册 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.auth-page {
+  min-height: calc(100vh - 120px); background: #f7f8fa;
+  display: flex; align-items: center; justify-content: center; padding: 40px 16px;
+}
+.auth-card {
+  background: #fff; border-radius: 20px; padding: 48px 44px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.10); width: 100%; max-width: 480px;
+}
+.auth-logo { text-align: center; margin-bottom: 28px; }
+.auth-logo .site-name { font-size: 1.2rem; font-weight: 700; color: #1a1a1a; }
+.auth-title { font-size: 1.6rem; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; text-align: center; }
+.auth-subtitle { font-size: .9rem; color: #888; text-align: center; margin-bottom: 32px; }
+
+.flash-messages { margin-bottom: 20px; }
+.flash-msg {
+  padding: 12px 16px; border-radius: 8px; font-size: .9rem; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.flash-msg.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.flash-msg.success { background: #f0fff4; color: #166534; border: 1px solid #86efac; }
+.flash-msg.info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: .88rem; color: #555; font-weight: 500; margin-bottom: 7px; }
+.form-group label .required { color: #E84B36; }
+.form-group input {
+  width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 12px 16px;
+  font-size: .97rem; outline: none; transition: border-color .2s; box-sizing: border-box;
+  font-family: inherit;
+}
+.form-group input:focus { border-color: #E84B36; box-shadow: 0 0 0 3px rgba(232,75,54,.1); }
+.form-hint { font-size: .78rem; color: #aaa; margin-top: 5px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.agree-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 20px; font-size: .88rem; color: #666; }
+.agree-row input { width: auto; margin-top: 3px; flex-shrink: 0; }
+.agree-row a { color: #E84B36; text-decoration: none; }
+.agree-row a:hover { text-decoration: underline; }
+
+.auth-submit { width: 100%; padding: 14px; font-size: 1rem; font-weight: 700; border-radius: 10px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; color: #ccc; font-size: .85rem; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-top: 1px solid #e5e7eb; }
+
+.auth-footer { text-align: center; font-size: .9rem; color: #888; }
+.auth-footer a { color: #E84B36; text-decoration: none; font-weight: 500; }
+.auth-footer a:hover { text-decoration: underline; }
+
+@media (max-width: 500px) {
+  .auth-card { padding: 32px 20px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <svg width="44" height="44" viewBox="0 0 36 36" fill="none" style="display:block;margin:0 auto 10px;">
+        <rect width="36" height="36" rx="8" fill="#E84B36"/>
+        <text x="18" y="25" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" font-family="sans-serif">印</text>
+      </svg>
+      <div class="site-name">{{ cfg.site_name }}</div>
+    </div>
+
+    <h1 class="auth-title">创建账户</h1>
+    <p class="auth-subtitle">注册后可追踪询价、管理订单</p>
+
+    <!-- Flash 消息 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="flash-msg {{ category }}">
+        {% if category == 'error' %}⚠️{% elif category == 'success' %}✅{% else %}ℹ️{% endif %}
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- 注册表单 -->
+    <form method="post" action="/register">
+      <div class="form-row">
+        <div class="form-group">
+          <label>用户名 <span class="required">*</span></label>
+          <input type="text" name="username" placeholder="字母数字下划线"
+                 required pattern="[a-zA-Z0-9_]{3,20}" value="{{ request.form.get('username', '') }}">
+          <div class="form-hint">3-20位，字母/数字/下划线</div>
+        </div>
+        <div class="form-group">
+          <label>手机号 <span class="required">*</span></label>
+          <input type="tel" name="phone" placeholder="11位手机号"
+                 required pattern="1[3-9]\d{9}" value="{{ request.form.get('phone', '') }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>真实姓名</label>
+        <input type="text" name="real_name" placeholder="选填，用于订单联系"
+               value="{{ request.form.get('real_name', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label>登录密码 <span class="required">*</span></label>
+        <input type="password" name="password" placeholder="至少8位" required minlength="8" id="regPassword">
+        <div class="form-hint">至少8位，包含字母和数字更安全</div>
+      </div>
+
+      <div class="form-group">
+        <label>确认密码 <span class="required">*</span></label>
+        <input type="password" name="confirm_password" placeholder="再次输入密码" required id="regConfirm">
+        <div class="form-hint" id="pwMatch" style="color:transparent;">-</div>
+      </div>
+
+      <div class="agree-row">
+        <input type="checkbox" name="agree" id="agreeCheck" required>
+        <label for="agreeCheck">
+          我已阅读并同意 <a href="/terms" target="_blank">《服务条款》</a> 和
+          <a href="/privacy" target="_blank">《隐私政策》</a>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary auth-submit">注册账户</button>
+    </form>
+
+    <div class="auth-divider">已有账户</div>
+
+    <div class="auth-footer">
+      <a href="/login">立即登录</a>
+      &nbsp;·&nbsp;
+      <a href="/">返回首页</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const pwEl = document.getElementById('regPassword');
+const cfEl = document.getElementById('regConfirm');
+const hint = document.getElementById('pwMatch');
+function checkPw() {
+  if (!cfEl.value) { hint.style.color = 'transparent'; return; }
+  if (pwEl.value === cfEl.value) {
+    hint.textContent = '✓ 密码一致'; hint.style.color = '#22c55e';
+  } else {
+    hint.textContent = '✗ 两次密码不一致'; hint.style.color = '#ef4444';
+  }
+}
+pwEl?.addEventListener('input', checkPw);
+cfEl?.addEventListener('input', checkPw);
+</script>
+{% endblock %}

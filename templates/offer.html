@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}在线自助报价 - {{ cfg.site_name }}{% endblock %}
+
+{% block body %}
+<div class="offer-page">
+
+  <!-- 面包屑 -->
+  <div class="offer-breadcrumb">
+    <div class="container">
+      <a href="/">首页</a> <span>›</span> <span>在线报价</span>
+      {% if selected_box %}<span>›</span> <span>{{ selected_box.category.name }}</span> <span>›</span> <span>{{ selected_box.name }}</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="offer-layout container">
+
+    <!-- ===== 左侧：分类 + 盒型选择 ===== -->
+    <aside class="offer-sidebar">
+      <div class="offer-sidebar-title">选择盒型</div>
+      {% for cat in categories %}
+      <div class="offer-cat-group" data-cat-id="{{ cat.id }}">
+        <div class="offer-cat-header" onclick="toggleCat({{ cat.id }})">
+          <span class="offer-cat-icon">{{ cat.icon }}</span>
+          <span class="offer-cat-name">{{ cat.name }}</span>
+          <span class="offer-cat-count">{{ cat.box_count }}</span>
+          <span class="offer-cat-arrow">▼</span>
+        </div>
+        <div class="offer-cat-boxes" id="cat-boxes-{{ cat.id }}">
+          {% for bt in cat.box_types %}
+          {% if bt.is_active %}
+          <div class="offer-box-item {% if selected_box and selected_box.id == bt.id %}active{% endif %}"
+               data-bt-id="{{ bt.id }}"
+               data-bt-name="{{ bt.name }}"
+               data-min-qty="{{ bt.min_quantity }}"
+               onclick="selectBoxType({{ bt.id }}, '{{ bt.name }}', {{ bt.min_quantity }})">
+            <span class="offer-box-name">{{ bt.name }}</span>
+            {% if bt.alias %}<span class="offer-box-alias">/ {{ bt.alias }}</span>{% endif %}
+            <span class="offer-box-qty">起印{{ bt.min_quantity }}个</span>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </aside>
+
+    <!-- ===== 右侧：报价表单 ===== -->
+    <main class="offer-main">
+      <!-- 未选盒型提示 -->
+      <div class="offer-placeholder" id="offerPlaceholder" {% if selected_box %}style="display:none"{% endif %}>
+        <div class="placeholder-icon">👈</div>
+        <h3>请从左侧选择盒型</h3>
+        <p>选择产品分类和具体盒型后，填写尺寸和数量即可获取即时报价</p>
+        <div class="placeholder-tips">
+          <div class="tip-item"><span class="tip-dot"></span>支持30+种盒型</div>
+          <div class="tip-item"><span class="tip-dot"></span>实时计算参考价格</div>
+          <div class="tip-item"><span class="tip-dot"></span>免费画刀版服务</div>
+        </div>
+      </div>
+
+      <!-- 报价表单 -->
+      <div class="offer-form-wrap" id="offerFormWrap" {% if not selected_box %}style="display:none"{% endif %}>
+        <div class="offer-form-header">
+          <h2 id="selectedBoxName">{% if selected_box %}{{ selected_box.name }}{% endif %}</h2>
+          <span class="offer-min-qty" id="offerMinQty">{% if selected_box %}起印 {{ selected_box.min_quantity }} 个{% endif %}</span>
+        </div>
+
+        <form id="offerForm" class="offer-form">
+          <input type="hidden" name="box_type_id" id="boxTypeId" value="{% if selected_box %}{{ selected_box.id }}{% endif %}">
+
+          <!-- 联系人信息 -->
+          <div class="form-section">
+            <div class="form-section-title">📋 联系人信息</div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>姓名 <em>*</em></label>
+                <input type="text" name="name" id="fname" placeholder="您的姓名" required>
+              </div>
+              <div class="form-group">
+                <label>手机号 <em>*</em></label>
+                <input type="tel" name="phone" id="fphone" placeholder="11位手机号" required>
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>公司名称</label>
+                <input type="text" name="company" placeholder="公司或品牌名（选填）">
+              </div>
+              <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" name="email" placeholder="邮箱（选填）">
+              </div>
+            </div>
+          </div>
+
+          <!-- 产品参数 -->
+          <div class="form-section">
+            <div class="form-section-title">📐 产品参数</div>
+
+            <!-- 尺寸 -->
+            <div class="form-group">
+              <label>成品尺寸（毫米）</label>
+              <div class="size-inputs">
+                <div class="size-field">
+                  <input type="number" name="length" id="flen" placeholder="长" min="1" step="0.1">
+                  <span>长</span>
+                </div>
+                <span class="size-x">×</span>
+                <div class="size-field">
+                  <input type="number" name="width" id="fwid" placeholder="宽" min="1" step="0.1">
+                  <span>宽</span>
+                </div>
+                <span class="size-x">×</span>
+                <div class="size-field">
+                  <input type="number" name="height" id="fhei" placeholder="高" min="1" step="0.1">
+                  <span>高</span>
+                </div>
+                <span class="size-unit">mm</span>
+              </div>
+            </div>
+
+            <!-- 数量 -->
+            <div class="form-group">
+              <label>印刷数量 <em>*</em></label>
+              <div class="qty-wrap">
+                <input type="number" name="quantity" id="fqty" placeholder="请填写数量" min="1" required>
+                <div class="qty-presets" id="qtyPresets">
+                  <!-- 根据起印量动态生成 -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 材质 -->
+            <div class="form-group">
+              <label>纸张材质 <em>*</em></label>
+              <div class="material-grid" id="materialGrid">
+                <label class="material-item">
+                  <input type="radio" name="material" value="白卡纸" checked>
+                  <span>白卡纸</span>
+                  <small>最常用</small>
+                </label>
+                <label class="material-item">
+                  <input type="radio" name="material" value="金卡纸">
+                  <span>金卡纸</span>
+                  <small>高档感</small>
+                </label>
+                <label class="material-item">
+                  <input type="radio" name="material" value="银卡纸">
+                  <span>银卡纸</span>
+                  <small>金属感</small>
+                </label>
+                <label class="material-item">
+                  <input type="radio" name="material" value="牛皮纸">
+                  <span>牛皮纸</span>
+                  <small>复古风</small>
+                </label>
+                <label class="material-item">
+                  <input type="radio" name="material" value="哑粉纸">
+                  <span>哑粉纸</span>
+                  <small>柔和哑光</small>
+                </label>
+                <label class="material-item">
+                  <input type="radio" name="material" value="铜版纸">
+                  <span>铜版纸</span>
+                  <small>亮面清晰</small>
+                </label>
+              </div>
+            </div>
+
+            <!-- 印刷工艺 -->
+            <div class="form-group">
+              <label>印刷工艺（可多选）</label>
+              <div class="craft-grid" id="craftGrid">
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="覆亮膜"><span>覆亮膜</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="覆哑膜"><span>覆哑膜</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="烫金"><span>烫金</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="烫银"><span>烫银</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="局部UV"><span>局部UV</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="压纹"><span>压纹</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="凹凸"><span>凹凸</span></label>
+                <label class="craft-item"><input type="checkbox" name="craft[]" value="镂空"><span>镂空</span></label>
+              </div>
+            </div>
+
+            <!-- 备注 -->
+            <div class="form-group">
+              <label>特殊要求备注</label>
+              <textarea name="remark" id="fremark" rows="3" placeholder="其他特殊要求，如印刷颜色、特殊工艺、文件格式要求等…"></textarea>
+            </div>
+          </div>
+
+          <!-- 上传文件 -->
+          <div class="form-section">
+            <div class="form-section-title">📎 上传设计稿（选填）</div>
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" name="file" id="fileInput" accept=".pdf,.ai,.psd,.zip,.rar,.jpg,.png" style="display:none">
+              <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+                <span class="upload-icon">📁</span>
+                <p>点击上传设计文件</p>
+                <small>支持 PDF / AI / PSD / ZIP / JPG / PNG，最大16MB</small>
+              </div>
+              <div class="upload-preview" id="uploadPreview" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- 实时报价区 -->
+          <div class="offer-price-box" id="offerPriceBox">
+            <div class="price-box-inner">
+              <div class="price-label">参考报价</div>
+              <div class="price-value" id="priceValue">选择盒型并填写数量后自动计算</div>
+              <div class="price-note">最终价格以客服确认为准，工厂直供价无中间商</div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="calcBtn" onclick="calculatePrice()">
+              🔄 重新计算
+            </button>
+          </div>
+
+          <!-- 提交按钮 -->
+          <div class="offer-submit-row">
+            <button type="submit" class="btn btn-primary btn-xl" id="submitBtn">
+              📨 提交询价单
+            </button>
+            <p class="submit-note">提交后客服将在2小时内电话联系，请保持手机畅通</p>
+          </div>
+        </form>
+
+        <!-- 成功提示 -->
+        <div class="offer-success" id="offerSuccess" style="display:none">
+          <div class="success-icon">🎉</div>
+          <h3>询价单提交成功！</h3>
+          <p>我们的客服会在<strong>2小时内</strong>与您电话联系，请保持手机畅通。</p>
+          <p>询价单编号：<strong id="inquiryId">-</strong></p>
+          <div class="success-btns">
+            <button class="btn btn-primary" onclick="resetOffer()">继续询价</button>
+            <a href="/user/inquiries" class="btn btn-outline">查看我的询价</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/offer.js"></script>
+<script>
+// 初始化：如果有预选盒型
+{% if selected_box %}
+window.addEventListener('DOMContentLoaded', function(){
+  selectBoxType({{ selected_box.id }}, '{{ selected_box.name }}', {{ selected_box.min_quantity }});
+  // 展开对应分类
+  document.getElementById('cat-boxes-{{ selected_box.category_id }}') && expandCat({{ selected_box.category_id }});
+});
+{% endif %}
+
+// URL参数：预选分类
+const urlParams = new URLSearchParams(window.location.search);
+const preCatId = urlParams.get('category');
+if (preCatId) {
+  window.addEventListener('DOMContentLoaded', () => expandCat(parseInt(preCatId)));
+}
+</script>
+{% endblock %}

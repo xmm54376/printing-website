@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} - {{ cfg.site_name }}{% endblock %}
+{% block desc %}{{ article.summary or (article.title + ' - ' + cfg.site_name + '印刷指南') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.guide-detail-page { background: #f7f8fa; }
+.detail-breadcrumb { background: #fff; border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
+.detail-breadcrumb .inner { font-size: .88rem; color: #888; }
+.detail-breadcrumb a { color: #888; text-decoration: none; }
+.detail-breadcrumb a:hover { color: #E84B36; }
+.detail-breadcrumb span { margin: 0 6px; }
+
+.guide-detail-body { padding: 36px 0 64px; }
+.guide-detail-layout { display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: flex-start; }
+
+/* 文章主体 */
+.article-main {
+  background: #fff; border-radius: 16px; padding: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.article-meta { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.article-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: .8rem; font-weight: 600;
+}
+.badge-印前规范 { background: #fef3c7; color: #92400e; }
+.badge-新手指南 { background: #dbeafe; color: #1e40af; }
+.badge-常见问题 { background: #dcfce7; color: #166534; }
+.article-date { font-size: .85rem; color: #aaa; }
+.article-views { font-size: .85rem; color: #aaa; }
+.article-title { font-size: 1.7rem; font-weight: 800; color: #1a1a1a; margin-bottom: 28px; line-height: 1.5; }
+.article-content { color: #444; line-height: 1.9; font-size: .97rem; }
+.article-content h2 { font-size: 1.3rem; font-weight: 700; margin: 28px 0 12px; color: #1a1a1a; }
+.article-content h3 { font-size: 1.1rem; font-weight: 600; margin: 20px 0 10px; color: #333; }
+.article-content p { margin-bottom: 14px; }
+.article-content ul, .article-content ol { padding-left: 24px; margin-bottom: 14px; }
+.article-content li { margin-bottom: 6px; }
+.article-content img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
+.article-content table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.article-content th, .article-content td { border: 1px solid #e5e7eb; padding: 10px 14px; }
+.article-content th { background: #f9fafb; font-weight: 600; }
+.article-content blockquote {
+  border-left: 4px solid #E84B36; padding: 12px 20px; background: #fef2f0;
+  border-radius: 0 8px 8px 0; margin: 16px 0; color: #555;
+}
+.article-content code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: .9em; }
+.article-content pre { background: #1a1a2e; color: #e5e7eb; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 16px 0; }
+.article-content pre code { background: none; padding: 0; }
+
+.article-footer-actions { margin-top: 36px; padding-top: 24px; border-top: 1px solid #f0f0f0; display: flex; gap: 12px; }
+
+/* 右侧边栏 */
+.guide-sidebar { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 20px; }
+.sidebar-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.sidebar-box h4 { font-size: .9rem; font-weight: 700; color: #1a1a1a; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #E84B36; }
+.sidebar-cat-list { display: flex; flex-direction: column; gap: 6px; }
+.sidebar-cat-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px; text-decoration: none; color: #555;
+  font-size: .9rem; transition: all .2s;
+}
+.sidebar-cat-link:hover { background: #fef2f0; color: #E84B36; }
+.sidebar-cat-link.active { background: #fef2f0; color: #E84B36; font-weight: 600; }
+.related-list { display: flex; flex-direction: column; gap: 12px; }
+.related-item { display: flex; gap: 10px; text-decoration: none; color: inherit; }
+.related-item:hover .related-item-title { color: #E84B36; }
+.related-item-num {
+  width: 24px; height: 24px; border-radius: 6px; background: #fef2f0; color: #E84B36;
+  display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; flex-shrink: 0;
+}
+.related-item-title { font-size: .88rem; color: #444; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.contact-sidebar {
+  background: linear-gradient(135deg, #E84B36, #ff7043); color: #fff; text-align: center;
+}
+.contact-sidebar h4 { color: #fff; border-bottom-color: rgba(255,255,255,.4); }
+.contact-sidebar p { font-size: .88rem; margin-bottom: 12px; opacity: .9; }
+.contact-sidebar .phone { font-size: 1.1rem; font-weight: 700; margin-bottom: 14px; }
+.contact-sidebar a.btn-white {
+  display: block; background: #fff; color: #E84B36; border-radius: 8px;
+  padding: 10px; font-weight: 600; font-size: .9rem; text-decoration: none;
+  transition: opacity .2s;
+}
+.contact-sidebar a.btn-white:hover { opacity: .9; }
+
+@media (max-width: 900px) {
+  .guide-detail-layout { grid-template-columns: 1fr; }
+  .guide-sidebar { position: static; }
+  .article-main { padding: 24px; }
+  .article-title { font-size: 1.3rem; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="guide-detail-page">
+  <!-- 面包屑 -->
+  <div class="detail-breadcrumb">
+    <div class="container inner">
+      <a href="/">首页</a><span>›</span>
+      <a href="/guide">印刷指南</a><span>›</span>
+      {% if article.category %}
+      <a href="/guide?category={{ article.category }}">{{ article.category }}</a><span>›</span>
+      {% endif %}
+      <span>{{ article.title }}</span>
+    </div>
+  </div>
+
+  <div class="container guide-detail-body">
+    <div class="guide-detail-layout">
+      <!-- 文章主体 -->
+      <article class="article-main">
+        <div class="article-meta">
+          {% if article.category %}
+          <span class="article-badge badge-{{ article.category }}">{{ article.category }}</span>
+          {% endif %}
+          <span class="article-date">📅 {{ article.created_at.strftime('%Y年%m月%d日') if article.created_at else '' }}</span>
+          <span class="article-views">👁 {{ article.view_count or 0 }} 次阅读</span>
+        </div>
+        <h1 class="article-title">{{ article.title }}</h1>
+        <div class="article-content">
+          {{ article.content | safe }}
+        </div>
+        <div class="article-footer-actions">
+          <a href="/guide" class="btn btn-outline">← 返回列表</a>
+          {% if article.category %}
+          <a href="/guide?category={{ article.category }}" class="btn btn-outline">更多{{ article.category }}</a>
+          {% endif %}
+        </div>
+      </article>
+
+      <!-- 右侧边栏 -->
+      <aside class="guide-sidebar">
+        <!-- 分类 -->
+        <div class="sidebar-box">
+          <h4>文章分类</h4>
+          <div class="sidebar-cat-list">
+            <a href="/guide" class="sidebar-cat-link {% if not article.category %}active{% endif %}">
+              <span>全部文章</span>
+            </a>
+            {% for cat in ['印前规范', '新手指南', '常见问题'] %}
+            <a href="/guide?category={{ cat }}"
+               class="sidebar-cat-link {% if article.category == cat %}active{% endif %}">
+              <span>{{ cat }}</span>
+              <span style="font-size:.75rem;color:#aaa;">→</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 联系客服 -->
+        <div class="sidebar-box contact-sidebar">
+          <h4>需要帮助？</h4>
+          <p>专业客服为您解答印刷定制问题</p>
+          <div class="phone">📞 {{ cfg.site_phone }}</div>
+          <a href="/contact" class="btn-white">免费咨询</a>
+        </div>
+
+        <!-- 快速报价 -->
+        <div class="sidebar-box" style="text-align:center;">
+          <h4>立即报价</h4>
+          <p style="font-size:.85rem;color:#666;margin-bottom:14px;">选择盒型，填写尺寸，即时获取报价</p>
+          <a href="/offer" class="btn btn-primary" style="display:block;text-align:center;">在线自助报价</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

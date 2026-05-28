@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>后台用户 - 管理后台</title>
+    <title>优惠券管理 - 管理后台</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
@@ -26,15 +26,15 @@
         .flash-msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
         .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-        .flash-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
         .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 20px; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; display: flex; align-items: center; justify-content: space-between; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; }
         .card-body { padding: 20px; }
-        .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: end; }
+        .form-row { display: grid; grid-template-columns: repeat(4, 1fr) 160px 130px; gap: 10px; align-items: end; }
         .form-group { margin-bottom: 0; }
         .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
-        .form-control { width: 100%; padding: 8px 10px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; color: #333; outline: none; transition: border-color 0.2s; }
+        .form-control { width: 100%; padding: 8px 10px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.2s; }
         .form-control:focus { border-color: #E84B36; }
+        select.form-control { cursor: pointer; }
         .btn { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background: #E84B36; color: #fff; }
         .btn-primary:hover { background: #c0392b; }
@@ -42,22 +42,25 @@
         .btn-outline:hover { border-color: #E84B36; color: #E84B36; }
         .btn-danger { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
         .btn-danger:hover { background: #ef4444; color: #fff; }
-        .btn-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-        .btn-warning:hover { background: #d97706; color: #fff; }
         .btn-sm { padding: 4px 10px; font-size: 12px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        table th { background: #fafafa; padding: 10px 14px; text-align: left; color: #888; font-weight: 600; border-bottom: 1px solid #f0f0f0; }
+        table th { background: #fafafa; padding: 10px 14px; text-align: left; color: #888; font-weight: 600; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
         table td { padding: 10px 14px; border-bottom: 1px solid #f7f7f7; color: #444; vertical-align: middle; }
         table tr:last-child td { border-bottom: none; }
         table tr:hover td { background: #fafafa; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-        .badge-super { background: #fef2f2; color: #dc2626; }
-        .badge-staff { background: #eff6ff; color: #2563eb; }
-        .badge-active { background: #f0fdf4; color: #16a34a; }
-        .badge-disabled { background: #f4f4f5; color: #71717a; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-discount { background: #eff6ff; color: #2563eb; }
+        .badge-fixed { background: #fef9c3; color: #a16207; }
+        .coupon-code { font-family: monospace; font-weight: 700; background: #f0f2f5; padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: 0.3s; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #22c55e; }
+        input:checked + .slider:before { transform: translateX(18px); }
         .sidebar-toggle { display: none; background: none; border: none; cursor: pointer; font-size: 22px; color: #333; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .main-wrap { margin-left: 0; }
@@ -80,9 +83,9 @@
         <div class="nav-item"><a href="{{ url_for('admin_messages') }}"><span class="icon">💬</span>留言管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_banners') }}"><span class="icon">🖼️</span>轮播图</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_articles') }}"><span class="icon">📰</span>文章管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_coupons') }}"><span class="icon">🎟️</span>优惠券</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_coupons') }}" class="active"><span class="icon">🎟️</span>优惠券</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_users') }}" class="active"><span class="icon">👤</span>后台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
@@ -93,7 +96,7 @@
     <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
             <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <span class="topbar-title">后台用户管理</span>
+            <span class="topbar-title">优惠券管理</span>
         </div>
         <div class="topbar-user">
             <span>{{ session.get('admin_user','') }}</span>
@@ -105,93 +108,112 @@
         {% if messages %}<div class="flash-wrap">{% for cat,msg in messages %}<div class="flash-msg flash-{{ cat if cat in ['success','error','info'] else 'info' }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
         {% endwith %}
 
-        {% if session.get('admin_role') == 'super_admin' %}
         <div class="card">
-            <div class="card-header">添加用户</div>
+            <div class="card-header">新建优惠券</div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('admin_user_add') }}">
+                <form method="POST" action="{{ url_for('admin_coupon_add') }}">
                     <div class="form-row">
                         <div class="form-group">
-                            <label>用户名 *</label>
-                            <input type="text" name="username" class="form-control" required placeholder="用户名">
+                            <label>优惠码 *</label>
+                            <input type="text" name="code" class="form-control" required placeholder="如：PRINT2024" style="text-transform:uppercase;">
                         </div>
                         <div class="form-group">
-                            <label>真实姓名</label>
-                            <input type="text" name="real_name" class="form-control" placeholder="真实姓名">
+                            <label>名称 *</label>
+                            <input type="text" name="name" class="form-control" required placeholder="优惠券名称">
                         </div>
                         <div class="form-group">
-                            <label>密码 *</label>
-                            <input type="password" name="password" class="form-control" required placeholder="设置密码">
-                        </div>
-                        <div class="form-group">
-                            <label>角色 *</label>
-                            <select name="role" class="form-control">
-                                <option value="staff">客服</option>
-                                <option value="super_admin">超级管理员</option>
+                            <label>类型 *</label>
+                            <select name="coupon_type" class="form-control" required>
+                                <option value="discount">折扣（如0.8折）</option>
+                                <option value="fixed">固定金额减</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label>优惠值 *</label>
+                            <input type="number" step="0.01" name="value" class="form-control" required placeholder="折扣填0.8，金额填50">
+                        </div>
+                        <div class="form-group">
+                            <label>最低消费（元）</label>
+                            <input type="number" step="0.01" name="min_amount" class="form-control" placeholder="0表示不限制">
+                        </div>
+                        <div class="form-group">
+                            <label>总数量</label>
+                            <input type="number" name="total_count" class="form-control" placeholder="0表示不限">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+                        <div class="form-group">
+                            <label>有效期开始</label>
+                            <input type="date" name="valid_from" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>有效期结束</label>
+                            <input type="date" name="valid_until" class="form-control">
                         </div>
                     </div>
                     <div style="margin-top:12px;">
-                        <button type="submit" class="btn btn-primary">添加用户</button>
+                        <button type="submit" class="btn btn-primary">创建优惠券</button>
                     </div>
                 </form>
             </div>
         </div>
-        {% endif %}
 
         <div class="card">
-            <div class="card-header">用户列表</div>
+            <div class="card-header">优惠券列表</div>
             <table>
                 <thead>
                     <tr>
-                        <th>用户名</th>
-                        <th>真实姓名</th>
-                        <th>角色</th>
+                        <th>优惠码</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>优惠值</th>
+                        <th>最低消费</th>
+                        <th>总量</th>
+                        <th>已用</th>
+                        <th>有效期</th>
                         <th>状态</th>
-                        <th>最后登录</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in users %}
+                    {% for coupon in coupons %}
                     <tr>
-                        <td><strong>{{ user.username }}</strong></td>
-                        <td>{{ user.real_name or '-' }}</td>
+                        <td><span class="coupon-code">{{ coupon.code }}</span></td>
+                        <td>{{ coupon.name }}</td>
                         <td>
-                            {% if user.role == 'super_admin' %}
-                            <span class="badge badge-super">超级管理员</span>
+                            {% if coupon.coupon_type == 'discount' %}
+                            <span class="badge badge-discount">折扣</span>
                             {% else %}
-                            <span class="badge badge-staff">客服</span>
+                            <span class="badge badge-fixed">满减</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if user.is_active %}
-                            <span class="badge badge-active">正常</span>
+                            {% if coupon.coupon_type == 'discount' %}
+                            {{ (coupon.value * 10)|round(1) }}折
                             {% else %}
-                            <span class="badge badge-disabled">已禁用</span>
+                            ¥{{ coupon.value }}
                             {% endif %}
                         </td>
-                        <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录' }}</td>
+                        <td>{{ '¥' + coupon.min_amount|string if coupon.min_amount else '不限' }}</td>
+                        <td>{{ coupon.total_count or '不限' }}</td>
+                        <td>{{ coupon.used_count or 0 }}</td>
+                        <td style="font-size:12px;">
+                            {% if coupon.valid_from %}{{ coupon.valid_from.strftime('%m/%d') }}{% endif %}
+                            {% if coupon.valid_until %} ~ {{ coupon.valid_until.strftime('%m/%d') }}{% endif %}
+                            {% if not coupon.valid_from and not coupon.valid_until %}长期有效{% endif %}
+                        </td>
                         <td>
-                            {% if session.get('admin_role') == 'super_admin' and user.username != session.get('admin_user') %}
-                            <form method="POST" action="{{ url_for('admin_user_toggle', id=user.id) }}" style="display:inline;">
-                                <button type="submit" class="btn btn-sm {{ 'btn-warning' if user.is_active else 'btn-outline' }}">
-                                    {{ '禁用' if user.is_active else '启用' }}
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin_user_reset_password', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认重置密码?')">
-                                <button type="submit" class="btn btn-sm btn-outline">重置密码</button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin_user_delete', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该用户?')">
-                                <button type="submit" class="btn btn-sm btn-danger">删除</button>
-                            </form>
-                            {% else %}
-                            <span style="color:#bbb;font-size:12px;">-</span>
-                            {% endif %}
+                            <label class="switch">
+                                <input type="checkbox" {{ 'checked' if coupon.is_active }} onchange="toggleCoupon({{ coupon.id }}, this)">
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin_coupon_delete', id=coupon.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除?')">删除</a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" style="text-align:center;color:#aaa;padding:30px;">暂无用户</td></tr>
+                    <tr><td colspan="10" style="text-align:center;color:#aaa;padding:30px;">暂无优惠券</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -201,6 +223,11 @@
 <script>
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');}
+function toggleCoupon(id, cb) {
+    fetch('/admin/coupon/' + id + '/toggle', {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(r => r.json()).then(d => { if(!d.success) cb.checked = !cb.checked; })
+        .catch(() => cb.checked = !cb.checked);
+}
 </script>
 </body>
 </html>

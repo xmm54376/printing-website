@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}我的订单 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.user-page { background: #f7f8fa; min-height: calc(100vh - 120px); padding: 36px 0 60px; }
+.user-layout { display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: flex-start; }
+
+.user-sidebar {
+  background: #fff; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); position: sticky; top: 80px;
+}
+.user-avatar-box {
+  background: linear-gradient(135deg, #E84B36, #ff7043); padding: 28px 20px; text-align: center;
+}
+.user-avatar {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.25);
+  display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+  margin: 0 auto 10px; color: #fff;
+}
+.user-avatar-name { font-size: 1rem; font-weight: 700; color: #fff; }
+.sidebar-nav { padding: 12px 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  text-decoration: none; color: #555; font-size: .92rem; transition: all .2s;
+  border-left: 3px solid transparent;
+}
+.sidebar-nav a:hover { background: #fef2f0; color: #E84B36; }
+.sidebar-nav a.active { background: #fef2f0; color: #E84B36; border-left-color: #E84B36; font-weight: 600; }
+.sidebar-logout { padding: 12px 20px; border-top: 1px solid #f5f5f5; }
+.sidebar-logout a { color: #aaa; font-size: .88rem; text-decoration: none; }
+
+.user-main-card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.card-title { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+.card-title::before { content: ''; display: block; width: 3px; height: 18px; background: #E84B36; border-radius: 2px; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.data-table th { padding: 10px 12px; text-align: left; font-size: .8rem; color: #999; font-weight: 500; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
+.data-table td { padding: 13px 12px; border-bottom: 1px solid #f7f7f7; color: #444; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #fafafa; }
+
+/* 订单状态 */
+.order-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .78rem; font-weight: 600; }
+.order-pending { background: #fff7ed; color: #c2410c; }
+.order-production { background: #eff6ff; color: #1d4ed8; }
+.order-shipped { background: #ecfdf5; color: #047857; }
+.order-done { background: #f0fff4; color: #166534; }
+.order-cancelled { background: #f3f4f6; color: #6b7280; }
+
+/* 付款状态 */
+.pay-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: .75rem; }
+.pay-unpaid { background: #fef3c7; color: #92400e; }
+.pay-partial { background: #dbeafe; color: #1e40af; }
+.pay-paid { background: #dcfce7; color: #166534; }
+
+.empty-table { text-align: center; padding: 40px; color: #aaa; }
+
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 24px; }
+.pagination a, .pagination span {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 8px; font-size: .9rem;
+  text-decoration: none; color: #444; border: 1.5px solid #e5e7eb; transition: all .2s;
+}
+.pagination a:hover { background: #fef2f0; border-color: #E84B36; color: #E84B36; }
+.pagination .current { background: #E84B36; border-color: #E84B36; color: #fff; font-weight: 600; }
+.pagination .disabled { opacity: .4; pointer-events: none; }
+
+@media (max-width: 900px) {
+  .user-layout { grid-template-columns: 1fr; }
+  .user-sidebar { position: static; }
+  .data-table { font-size: .8rem; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="user-page">
+  <div class="container">
+    <div class="user-layout">
+      <!-- 侧边栏 -->
+      <aside class="user-sidebar">
+        <div class="user-avatar-box">
+          <div class="user-avatar">{{ (session.user_name or '用')[0] }}</div>
+          <div class="user-avatar-name">{{ session.user_name }}</div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="/user"><span>🏠</span> 个人中心</a>
+          <a href="/user/inquiries"><span>📋</span> 我的询价</a>
+          <a href="/user/orders" class="active"><span>📦</span> 我的订单</a>
+          <a href="/user/profile"><span>👤</span> 个人资料</a>
+        </nav>
+        <div class="sidebar-logout">
+          <a href="/logout">退出登录</a>
+        </div>
+      </aside>
+
+      <!-- 主内容 -->
+      <div>
+        <div class="user-main-card">
+          <div class="card-header">
+            <div class="card-title">我的订单</div>
+            <a href="/contact" class="btn btn-outline btn-sm">联系客服</a>
+          </div>
+
+          {% if pagination and pagination.total > 0 %}
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>订单编号</th>
+                  <th>订单金额</th>
+                  <th>订单状态</th>
+                  <th>付款状态</th>
+                  <th>下单时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in pagination.items %}
+                <tr>
+                  <td style="font-family:monospace;font-size:.85rem;">{{ order.order_no }}</td>
+                  <td style="font-weight:700;color:#E84B36;">¥{{ '%.2f'|format(order.total) }}</td>
+                  <td>
+                    {% if order.status == '待确认' or order.status == '待处理' %}
+                    <span class="order-badge order-pending">{{ order.status }}</span>
+                    {% elif order.status == '生产中' %}
+                    <span class="order-badge order-production">生产中</span>
+                    {% elif order.status == '已发货' %}
+                    <span class="order-badge order-shipped">已发货</span>
+                    {% elif order.status == '已完成' %}
+                    <span class="order-badge order-done">已完成</span>
+                    {% elif order.status == '已取消' %}
+                    <span class="order-badge order-cancelled">已取消</span>
+                    {% else %}
+                    <span class="order-badge order-pending">{{ order.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if order.payment_status == '未付款' %}
+                    <span class="pay-badge pay-unpaid">未付款</span>
+                    {% elif order.payment_status == '已付定金' %}
+                    <span class="pay-badge pay-partial">已付定金</span>
+                    {% elif order.payment_status == '已付清' %}
+                    <span class="pay-badge pay-paid">已付清</span>
+                    {% else %}
+                    <span class="pay-badge pay-unpaid">{{ order.payment_status or '未付款' }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
+                  <td>
+                    <a href="/user/order/{{ order.id }}" style="color:#E84B36;font-size:.85rem;text-decoration:none;">查看</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 分页 -->
+          {% if pagination.pages > 1 %}
+          <div class="pagination">
+            {% if pagination.has_prev %}
+            <a href="?page={{ pagination.prev_num }}">&lsaquo;</a>
+            {% else %}<span class="disabled">&lsaquo;</span>{% endif %}
+
+            {% for p in pagination.iter_pages() %}
+              {% if p %}
+              <a href="?page={{ p }}" class="{% if p == pagination.page %}current{% endif %}">{{ p }}</a>
+              {% else %}<span>…</span>{% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <a href="?page={{ pagination.next_num }}">&rsaquo;</a>
+            {% else %}<span class="disabled">&rsaquo;</span>{% endif %}
+          </div>
+          {% endif %}
+
+          {% else %}
+          <div class="empty-table">
+            <div style="font-size:2.5rem;margin-bottom:12px;">📦</div>
+            <p>暂无订单记录</p>
+            <a href="/offer" class="btn btn-primary" style="margin-top:16px;display:inline-block;">立即下单</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

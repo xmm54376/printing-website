@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ cfg.site_name }}{% endblock %} - 专业包装印刷定制</title>
+<meta name="description" content="{% block desc %}{{ cfg.site_name }}专业包装印刷定制厂家，提供纸盒、手提袋、礼盒等印刷品定制，小批量起印，快速交货{% endblock %}">
+<link rel="stylesheet" href="/static/css/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ===== 顶部导航栏 ===== -->
+<header class="site-header" id="siteHeader">
+  <div class="header-inner container">
+    <a href="/" class="logo">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#E84B36"/><text x="18" y="25" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" font-family="sans-serif">印</text></svg>
+      <span class="logo-text">{{ cfg.site_name }}</span>
+    </a>
+
+    <nav class="main-nav" id="mainNav">
+      <a href="/" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">首页</a>
+      <a href="/offer" class="nav-link {% if request.endpoint == 'offer' %}active{% endif %}">
+        在线报价 <span class="nav-badge">自助</span>
+      </a>
+      <a href="/products" class="nav-link {% if request.endpoint in ['products','product_detail'] %}active{% endif %}">通用现货</a>
+      <a href="/guide" class="nav-link {% if request.endpoint in ['guide','guide_detail'] %}active{% endif %}">印刷指南</a>
+      <a href="/activity" class="nav-link {% if request.endpoint == 'activity' %}active{% endif %}">活动中心 <span class="nav-badge new">NEW</span></a>
+      <a href="/about" class="nav-link {% if request.endpoint == 'about' %}active{% endif %}">关于我们</a>
+      <a href="/contact" class="nav-link {% if request.endpoint == 'contact' %}active{% endif %}">联系我们</a>
+    </nav>
+
+    <div class="header-right">
+      <a href="tel:{{ cfg.site_phone }}" class="header-phone">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+        {{ cfg.site_phone }}
+      </a>
+      {% if session.user_id %}
+      <div class="user-menu">
+        <a href="/user" class="btn-user">{{ session.user_name }} ▾</a>
+        <div class="user-dropdown">
+          <a href="/user">个人中心</a>
+          <a href="/user/inquiries">我的询价</a>
+          <a href="/user/orders">我的订单</a>
+          <a href="/logout">退出</a>
+        </div>
+      </div>
+      {% else %}
+      <a href="/login" class="btn-login">登录</a>
+      <a href="/register" class="btn-register">注册</a>
+      {% endif %}
+      <a href="/offer" class="btn btn-primary btn-sm">立即报价</a>
+    </div>
+
+    <button class="hamburger" id="hamburger" aria-label="菜单">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav" id="mobileNav">
+    <a href="/">首页</a>
+    <a href="/offer">在线报价</a>
+    <a href="/products">通用现货</a>
+    <a href="/guide">印刷指南</a>
+    <a href="/activity">活动中心</a>
+    <a href="/about">关于我们</a>
+    <a href="/contact">联系我们</a>
+    {% if session.user_id %}
+    <a href="/user">个人中心</a>
+    <a href="/logout">退出登录</a>
+    {% else %}
+    <a href="/login">登录</a>
+    <a href="/register">注册</a>
+    {% endif %}
+  </div>
+</header>
+
+<!-- ===== 页面主体 ===== -->
+{% block body %}{% endblock %}
+
+<!-- ===== 页脚 ===== -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#E84B36"/><text x="18" y="25" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" font-family="sans-serif">印</text></svg>
+          <span>{{ cfg.site_name }}</span>
+        </a>
+        <p>专业包装印刷定制厂家，立足广东，服务全国。工厂直销，品质保障，小批量起印。</p>
+        <div class="footer-contact-mini">
+          <span>📞 {{ cfg.site_phone }}</span>
+          <span>💬 微信：{{ cfg.site_wechat }}</span>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>关于我们</h4>
+        <a href="/about">公司简介</a>
+        <a href="/contact">联系我们</a>
+        <a href="/about#cert">资质认证</a>
+      </div>
+      <div class="footer-col">
+        <h4>下单指南</h4>
+        <a href="/guide?category=印前规范">文件规范</a>
+        <a href="/guide?category=新手指南">新手指南</a>
+        <a href="/offer">在线报价</a>
+      </div>
+      <div class="footer-col">
+        <h4>帮助中心</h4>
+        <a href="/guide?category=常见问题">常见问题</a>
+        <a href="/activity">优惠活动</a>
+        <a href="/contact">投诉建议</a>
+      </div>
+      <div class="footer-col">
+        <h4>联系方式</h4>
+        <p>服务热线：{{ cfg.site_phone }}</p>
+        <p>查货热线：{{ cfg.site_phone_check }}</p>
+        <p>邮箱：{{ cfg.site_email }}</p>
+        <p>地址：{{ cfg.site_address }}</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© {{ now.year if now else 2026 }} {{ cfg.site_name }} · 版权所有</span>
+      {% if cfg.site_icp %}<a href="https://beian.miit.gov.cn/" target="_blank">{{ cfg.site_icp }}</a>{% endif %}
+    </div>
+  </div>
+</footer>
+
+<!-- ===== 右侧浮动客服 ===== -->
+<div class="float-service" id="floatService">
+  <div class="float-item float-wechat">
+    <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8.5 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 2C6.5 2 2 6 2 11c0 2.4 1 4.5 2.5 6.1L3 22l5-1.5c1.2.4 2.6.5 4 .5 5.5 0 10-4 10-9S17.5 2 12 2z"/></svg>
+    <div class="float-tooltip">
+      <strong>微信客服</strong>
+      <span>{{ cfg.site_wechat }}</span>
+    </div>
+  </div>
+  <a href="tel:{{ cfg.site_phone }}" class="float-item float-phone">
+    <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+    <div class="float-tooltip">
+      <strong>电话咨询</strong>
+      <span>{{ cfg.site_phone }}</span>
+    </div>
+  </a>
+  <button class="float-item float-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+  </button>
+</div>
+
+<script src="/static/js/main.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

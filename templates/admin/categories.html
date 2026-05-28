@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>后台用户 - 管理后台</title>
+    <title>分类管理 - 管理后台</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
@@ -26,15 +26,15 @@
         .flash-msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
         .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-        .flash-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
-        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 20px; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; display: flex; align-items: center; justify-content: space-between; }
+        .grid-2 { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
+        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; }
         .card-body { padding: 20px; }
-        .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: end; }
-        .form-group { margin-bottom: 0; }
-        .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
-        .form-control { width: 100%; padding: 8px 10px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; color: #333; outline: none; transition: border-color 0.2s; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
+        .form-control { width: 100%; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; outline: none; transition: border-color 0.2s; }
         .form-control:focus { border-color: #E84B36; }
+        textarea.form-control { resize: vertical; min-height: 70px; }
         .btn { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background: #E84B36; color: #fff; }
         .btn-primary:hover { background: #c0392b; }
@@ -42,28 +42,28 @@
         .btn-outline:hover { border-color: #E84B36; color: #E84B36; }
         .btn-danger { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
         .btn-danger:hover { background: #ef4444; color: #fff; }
-        .btn-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-        .btn-warning:hover { background: #d97706; color: #fff; }
         .btn-sm { padding: 4px 10px; font-size: 12px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         table th { background: #fafafa; padding: 10px 14px; text-align: left; color: #888; font-weight: 600; border-bottom: 1px solid #f0f0f0; }
         table td { padding: 10px 14px; border-bottom: 1px solid #f7f7f7; color: #444; vertical-align: middle; }
         table tr:last-child td { border-bottom: none; }
         table tr:hover td { background: #fafafa; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-        .badge-super { background: #fef2f2; color: #dc2626; }
-        .badge-staff { background: #eff6ff; color: #2563eb; }
-        .badge-active { background: #f0fdf4; color: #16a34a; }
-        .badge-disabled { background: #f4f4f5; color: #71717a; }
+        .cat-icon { font-size: 22px; }
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 400px; max-width: 95vw; }
+        .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
         .sidebar-toggle { display: none; background: none; border: none; cursor: pointer; font-size: 22px; color: #333; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .main-wrap { margin-left: 0; }
             .sidebar-toggle { display: block; }
             .overlay.show { display: block; }
-            .form-row { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -76,13 +76,13 @@
         <div class="nav-item"><a href="{{ url_for('admin_inquiries') }}"><span class="icon">📋</span>询价管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_products') }}"><span class="icon">📦</span>现货产品</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_box_types') }}"><span class="icon">🗂️</span>盒型管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_categories') }}"><span class="icon">🏷️</span>分类管理</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_categories') }}" class="active"><span class="icon">🏷️</span>分类管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_messages') }}"><span class="icon">💬</span>留言管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_banners') }}"><span class="icon">🖼️</span>轮播图</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_articles') }}"><span class="icon">📰</span>文章管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_coupons') }}"><span class="icon">🎟️</span>优惠券</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_users') }}" class="active"><span class="icon">👤</span>后台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
@@ -93,7 +93,7 @@
     <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
             <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <span class="topbar-title">后台用户管理</span>
+            <span class="topbar-title">分类管理</span>
         </div>
         <div class="topbar-user">
             <span>{{ session.get('admin_user','') }}</span>
@@ -105,102 +105,97 @@
         {% if messages %}<div class="flash-wrap">{% for cat,msg in messages %}<div class="flash-msg flash-{{ cat if cat in ['success','error','info'] else 'info' }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
         {% endwith %}
 
-        {% if session.get('admin_role') == 'super_admin' %}
-        <div class="card">
-            <div class="card-header">添加用户</div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('admin_user_add') }}">
-                    <div class="form-row">
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header">添加分类</div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_category_add') }}">
                         <div class="form-group">
-                            <label>用户名 *</label>
-                            <input type="text" name="username" class="form-control" required placeholder="用户名">
+                            <label>分类名称 *</label>
+                            <input type="text" name="name" class="form-control" required placeholder="输入分类名称">
                         </div>
                         <div class="form-group">
-                            <label>真实姓名</label>
-                            <input type="text" name="real_name" class="form-control" placeholder="真实姓名">
+                            <label>图标（Emoji或URL）</label>
+                            <input type="text" name="icon" class="form-control" placeholder="如：📦 或图标URL">
                         </div>
                         <div class="form-group">
-                            <label>密码 *</label>
-                            <input type="password" name="password" class="form-control" required placeholder="设置密码">
+                            <label>描述</label>
+                            <textarea name="description" class="form-control" placeholder="分类描述..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label>角色 *</label>
-                            <select name="role" class="form-control">
-                                <option value="staff">客服</option>
-                                <option value="super_admin">超级管理员</option>
-                            </select>
+                            <label>排序（越小越前）</label>
+                            <input type="number" name="sort_order" class="form-control" value="0">
                         </div>
-                    </div>
-                    <div style="margin-top:12px;">
-                        <button type="submit" class="btn btn-primary">添加用户</button>
-                    </div>
-                </form>
+                        <button type="submit" class="btn btn-primary">添加分类</button>
+                    </form>
+                </div>
             </div>
-        </div>
-        {% endif %}
 
-        <div class="card">
-            <div class="card-header">用户列表</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>用户名</th>
-                        <th>真实姓名</th>
-                        <th>角色</th>
-                        <th>状态</th>
-                        <th>最后登录</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td><strong>{{ user.username }}</strong></td>
-                        <td>{{ user.real_name or '-' }}</td>
-                        <td>
-                            {% if user.role == 'super_admin' %}
-                            <span class="badge badge-super">超级管理员</span>
-                            {% else %}
-                            <span class="badge badge-staff">客服</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if user.is_active %}
-                            <span class="badge badge-active">正常</span>
-                            {% else %}
-                            <span class="badge badge-disabled">已禁用</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录' }}</td>
-                        <td>
-                            {% if session.get('admin_role') == 'super_admin' and user.username != session.get('admin_user') %}
-                            <form method="POST" action="{{ url_for('admin_user_toggle', id=user.id) }}" style="display:inline;">
-                                <button type="submit" class="btn btn-sm {{ 'btn-warning' if user.is_active else 'btn-outline' }}">
-                                    {{ '禁用' if user.is_active else '启用' }}
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin_user_reset_password', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认重置密码?')">
-                                <button type="submit" class="btn btn-sm btn-outline">重置密码</button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin_user_delete', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该用户?')">
-                                <button type="submit" class="btn btn-sm btn-danger">删除</button>
-                            </form>
-                            {% else %}
-                            <span style="color:#bbb;font-size:12px;">-</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" style="text-align:center;color:#aaa;padding:30px;">暂无用户</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="card">
+                <div class="card-header">分类列表（{{ categories|length }} 个）</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>图标</th>
+                            <th>名称</th>
+                            <th>描述</th>
+                            <th>盒型数量</th>
+                            <th>排序</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td><span class="cat-icon">{{ cat.icon or '📦' }}</span></td>
+                            <td><strong>{{ cat.name }}</strong></td>
+                            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ cat.description or '-' }}</td>
+                            <td>{{ cat.box_types|length if cat.box_types is defined else 0 }}</td>
+                            <td>{{ cat.sort_order or 0 }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline" onclick="openEditCat({{ cat.id }},'{{ cat.name }}','{{ cat.icon or '' }}','{{ cat.description or '' }}',{{ cat.sort_order or 0 }})">编辑</button>
+                                <a href="{{ url_for('admin_category_delete', id=cat.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除?')">删除</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="text-align:center;color:#aaa;padding:30px;">暂无分类</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3>编辑分类</h3>
+        <form id="editCatForm" method="POST">
+            <div class="form-group"><label>名称 *</label><input type="text" name="name" id="catName" class="form-control" required></div>
+            <div class="form-group"><label>图标</label><input type="text" name="icon" id="catIcon" class="form-control"></div>
+            <div class="form-group"><label>描述</label><textarea name="description" id="catDesc" class="form-control"></textarea></div>
+            <div class="form-group"><label>排序</label><input type="number" name="sort_order" id="catSort" class="form-control"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('editModal').classList.remove('show')">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');}
+function openEditCat(id, name, icon, desc, sort) {
+    document.getElementById('editCatForm').action = '/admin/category/' + id + '/edit';
+    document.getElementById('catName').value = name;
+    document.getElementById('catIcon').value = icon;
+    document.getElementById('catDesc').value = desc;
+    document.getElementById('catSort').value = sort;
+    document.getElementById('editModal').classList.add('show');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('show'); }));
 </script>
 </body>
 </html>

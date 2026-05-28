@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}联系我们 - {{ cfg.site_name }}{% endblock %}
+{% block desc %}联系{{ cfg.site_name }}，服务热线{{ cfg.site_phone }}，专业印刷定制咨询{% endblock %}
+
+{% block extra_head %}
+<style>
+.contact-page { background: #f7f8fa; }
+.page-hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E84B36 100%);
+  color: #fff; padding: 56px 0 40px; text-align: center;
+}
+.page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 10px; }
+.page-hero p { opacity: .8; }
+
+.contact-body { padding: 48px 0 64px; }
+.contact-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 40px; }
+
+/* 左侧联系信息 */
+.contact-info-section { display: flex; flex-direction: column; gap: 20px; }
+.info-card {
+  background: #fff; border-radius: 16px; padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); display: flex; align-items: flex-start; gap: 16px;
+  transition: transform .2s;
+}
+.info-card:hover { transform: translateY(-3px); }
+.info-icon {
+  width: 48px; height: 48px; border-radius: 12px; background: #fef2f0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+}
+.info-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; color: #1a1a1a; }
+.info-content a { color: #E84B36; font-size: 1.1rem; font-weight: 600; text-decoration: none; }
+.info-content a:hover { text-decoration: underline; }
+.info-content p { font-size: .85rem; color: #888; margin-top: 4px; }
+
+/* 微信二维码 */
+.wechat-card {
+  background: #fff; border-radius: 16px; padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); text-align: center;
+}
+.wechat-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #1a1a1a; }
+.qr-placeholder {
+  width: 140px; height: 140px; margin: 0 auto 12px;
+  background: #f5f5f5; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 3rem; border: 2px dashed #e5e7eb;
+}
+.wechat-id { font-size: .9rem; color: #555; }
+.wechat-id strong { color: #07c160; font-size: 1rem; }
+
+/* 地址 */
+.address-card {
+  background: #fff; border-radius: 16px; padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.address-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: #1a1a1a; }
+.address-text { display: flex; gap: 10px; align-items: flex-start; }
+.address-text .addr-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+.address-text p { color: #555; font-size: .95rem; line-height: 1.7; }
+
+/* 右侧表单 */
+.contact-form-card {
+  background: #fff; border-radius: 16px; padding: 36px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.contact-form-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+.contact-form-card .form-desc { color: #888; font-size: .9rem; margin-bottom: 28px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field.full { grid-column: 1/-1; }
+.form-field label { font-size: .85rem; color: #555; font-weight: 500; }
+.form-field input, .form-field textarea, .form-field select {
+  border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 11px 14px;
+  font-size: .95rem; outline: none; transition: border-color .2s; font-family: inherit;
+}
+.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: #E84B36; }
+.form-field textarea { min-height: 120px; resize: vertical; }
+.form-submit { margin-top: 8px; }
+.form-submit button { width: 100%; }
+.form-success {
+  display: none; background: #f0fff4; border: 1px solid #86efac;
+  border-radius: 8px; padding: 16px; color: #166534; text-align: center; margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .contact-layout { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="contact-page">
+  <!-- 页头 -->
+  <div class="page-hero">
+    <div class="container">
+      <h1>联系我们</h1>
+      <p>多渠道客服，快速响应，竭诚为您服务</p>
+    </div>
+  </div>
+
+  <div class="container contact-body">
+    <div class="contact-layout">
+      <!-- 左侧：联系方式 -->
+      <div class="contact-info-section">
+        <!-- 服务热线 -->
+        <div class="info-card animate-in">
+          <div class="info-icon">📞</div>
+          <div class="info-content">
+            <h4>服务热线</h4>
+            <a href="tel:{{ cfg.site_phone }}">{{ cfg.site_phone }}</a>
+            <p>工作日 9:00 - 18:00，周末可微信联系</p>
+          </div>
+        </div>
+
+        <!-- 查货热线 -->
+        <div class="info-card animate-in" style="animation-delay:.08s">
+          <div class="info-icon">📋</div>
+          <div class="info-content">
+            <h4>查货热线</h4>
+            <a href="tel:{{ cfg.site_phone_check }}">{{ cfg.site_phone_check }}</a>
+            <p>订单进度查询、物流跟踪专线</p>
+          </div>
+        </div>
+
+        <!-- 投诉建议 -->
+        <div class="info-card animate-in" style="animation-delay:.16s">
+          <div class="info-icon">💬</div>
+          <div class="info-content">
+            <h4>投诉与建议</h4>
+            <a href="mailto:{{ cfg.site_email }}">{{ cfg.site_email }}</a>
+            <p>您的反馈是我们进步的动力，24小时内回复</p>
+          </div>
+        </div>
+
+        <!-- 微信二维码 -->
+        <div class="wechat-card animate-in" style="animation-delay:.24s">
+          <h4>💬 微信扫码咨询</h4>
+          <div class="qr-placeholder">📷</div>
+          <p class="wechat-id">微信号：<strong>{{ cfg.site_wechat }}</strong></p>
+          <p style="font-size:.82rem;color:#aaa;margin-top:6px;">扫码添加客服微信，随时咨询</p>
+        </div>
+
+        <!-- 地址 -->
+        <div class="address-card animate-in" style="animation-delay:.32s">
+          <h4>📍 公司地址</h4>
+          <div class="address-text">
+            <span class="addr-icon">🏢</span>
+            <p>{{ cfg.site_address or '广东省印刷产业园区' }}<br>
+            <span style="font-size:.85rem;color:#aaa;">欢迎来厂参观考察</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：联系表单 -->
+      <div class="contact-form-card animate-in" style="animation-delay:.1s">
+        <h3>发送留言</h3>
+        <p class="form-desc">填写您的联系信息，我们会在最短时间内回复您</p>
+        <form id="contactPageForm">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>您的姓名 *</label>
+              <input type="text" name="name" placeholder="请输入姓名" required>
+            </div>
+            <div class="form-field">
+              <label>联系电话 *</label>
+              <input type="tel" name="phone" placeholder="请输入手机号" required>
+            </div>
+            <div class="form-field">
+              <label>邮箱地址</label>
+              <input type="email" name="email" placeholder="选填">
+            </div>
+            <div class="form-field">
+              <label>公司名称</label>
+              <input type="text" name="company" placeholder="选填">
+            </div>
+            <div class="form-field full">
+              <label>咨询类型</label>
+              <select name="inquiry_type">
+                <option value="">请选择</option>
+                <option>产品定制咨询</option>
+                <option>现货采购咨询</option>
+                <option>价格咨询</option>
+                <option>订单跟进</option>
+                <option>投诉建议</option>
+                <option>其他</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label>留言内容 *</label>
+              <textarea name="message" placeholder="请详细描述您的需求，包括产品类型、数量、特殊要求等…" required></textarea>
+            </div>
+          </div>
+          <div class="form-submit" style="margin-top:16px;">
+            <button type="submit" class="btn btn-primary">提交留言</button>
+          </div>
+        </form>
+        <div class="form-success" id="contactSuccess">
+          ✅ 留言提交成功！我们会在1个工作日内联系您，请保持电话畅通。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('contactPageForm')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = this.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = '提交中…';
+  try {
+    const fd = new FormData(this);
+    const data = Object.fromEntries(fd);
+    const res = await fetch('/api/contact', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    const json = await res.json();
+    if (json.ok) {
+      this.style.display = 'none';
+      document.getElementById('contactSuccess').style.display = 'block';
+    } else {
+      alert(json.msg || '提交失败，请重试');
+      btn.disabled = false; btn.textContent = '提交留言';
+    }
+  } catch(err) {
+    alert('网络错误，请重试');
+    btn.disabled = false; btn.textContent = '提交留言';
+  }
+});
+</script>
+{% endblock %}

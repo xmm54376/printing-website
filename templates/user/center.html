@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}个人中心 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.user-page { background: #f7f8fa; min-height: calc(100vh - 120px); padding: 36px 0 60px; }
+.user-layout { display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: flex-start; }
+
+/* 侧边栏 */
+.user-sidebar {
+  background: #fff; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); position: sticky; top: 80px;
+}
+.user-avatar-box {
+  background: linear-gradient(135deg, #E84B36, #ff7043); padding: 28px 20px; text-align: center;
+}
+.user-avatar {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.25);
+  display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+  margin: 0 auto 10px; color: #fff;
+}
+.user-avatar-name { font-size: 1rem; font-weight: 700; color: #fff; }
+.user-avatar-sub { font-size: .78rem; color: rgba(255,255,255,.75); margin-top: 3px; }
+.sidebar-nav { padding: 12px 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  text-decoration: none; color: #555; font-size: .92rem; transition: all .2s;
+  border-left: 3px solid transparent;
+}
+.sidebar-nav a:hover { background: #fef2f0; color: #E84B36; }
+.sidebar-nav a.active { background: #fef2f0; color: #E84B36; border-left-color: #E84B36; font-weight: 600; }
+.sidebar-nav .nav-icon { font-size: 1rem; }
+.sidebar-logout { padding: 12px 20px; border-top: 1px solid #f5f5f5; }
+.sidebar-logout a { color: #aaa; font-size: .88rem; text-decoration: none; }
+.sidebar-logout a:hover { color: #E84B36; }
+
+/* 主内容 */
+.user-main { display: flex; flex-direction: column; gap: 24px; }
+.user-main-card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.card-title { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+.card-title::before { content: ''; display: block; width: 3px; height: 18px; background: #E84B36; border-radius: 2px; }
+.card-more { font-size: .85rem; color: #E84B36; text-decoration: none; }
+.card-more:hover { text-decoration: underline; }
+
+/* 欢迎banner */
+.welcome-banner {
+  background: linear-gradient(135deg, #E84B36 0%, #ff7043 100%);
+  color: #fff; border-radius: 16px; padding: 28px 32px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.welcome-text h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+.welcome-text p { opacity: .85; font-size: .9rem; }
+.welcome-stats { display: flex; gap: 32px; }
+.wstat { text-align: center; }
+.wstat-num { font-size: 2rem; font-weight: 800; }
+.wstat-label { font-size: .78rem; opacity: .8; }
+
+/* 最近询价表格 */
+.data-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.data-table th { padding: 10px 12px; text-align: left; font-size: .8rem; color: #999; font-weight: 500; border-bottom: 2px solid #f0f0f0; }
+.data-table td { padding: 13px 12px; border-bottom: 1px solid #f7f7f7; color: #444; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #fafafa; }
+.status-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .78rem; font-weight: 600;
+}
+.status-pending { background: #fff7ed; color: #c2410c; }
+.status-quoted { background: #eff6ff; color: #1d4ed8; }
+.status-done { background: #f0fff4; color: #166534; }
+.status-closed { background: #f3f4f6; color: #6b7280; }
+
+.empty-table { text-align: center; padding: 30px; color: #aaa; font-size: .9rem; }
+
+@media (max-width: 900px) {
+  .user-layout { grid-template-columns: 1fr; }
+  .user-sidebar { position: static; }
+  .welcome-banner { flex-direction: column; align-items: flex-start; }
+  .welcome-stats { gap: 20px; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="user-page">
+  <div class="container">
+    <div class="user-layout">
+      <!-- 侧边栏 -->
+      <aside class="user-sidebar">
+        <div class="user-avatar-box">
+          <div class="user-avatar">{{ (user.real_name or user.username or '用')[0] }}</div>
+          <div class="user-avatar-name">{{ user.real_name or user.username }}</div>
+          <div class="user-avatar-sub">{{ user.phone }}</div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="/user" class="active"><span class="nav-icon">🏠</span> 个人中心</a>
+          <a href="/user/inquiries"><span class="nav-icon">📋</span> 我的询价</a>
+          <a href="/user/orders"><span class="nav-icon">📦</span> 我的订单</a>
+          <a href="/user/profile"><span class="nav-icon">👤</span> 个人资料</a>
+        </nav>
+        <div class="sidebar-logout">
+          <a href="/logout">退出登录</a>
+        </div>
+      </aside>
+
+      <!-- 主内容 -->
+      <div class="user-main">
+        <!-- 欢迎Banner -->
+        <div class="welcome-banner">
+          <div class="welcome-text">
+            <h2>你好，{{ user.real_name or user.username }} 👋</h2>
+            <p>欢迎回到{{ cfg.site_name }}用户中心</p>
+          </div>
+          <div class="welcome-stats">
+            <div class="wstat">
+              <div class="wstat-num">{{ inquiries|length if inquiries else 0 }}</div>
+              <div class="wstat-label">询价记录</div>
+            </div>
+            <div class="wstat">
+              <div class="wstat-num">{{ orders|length if orders else 0 }}</div>
+              <div class="wstat-label">我的订单</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 最近询价 -->
+        <div class="user-main-card">
+          <div class="card-header">
+            <div class="card-title">最近询价</div>
+            <a href="/user/inquiries" class="card-more">查看全部 →</a>
+          </div>
+          {% if inquiries %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>询价单号</th>
+                <th>产品类型</th>
+                <th>数量</th>
+                <th>状态</th>
+                <th>提交时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inq in inquiries[:5] %}
+              <tr>
+                <td>#{{ '%04d'|format(inq.id) }}</td>
+                <td>{{ inq.product_type or inq.box_type or '-' }}</td>
+                <td>{{ inq.quantity }}{{ inq.unit or '个' }}</td>
+                <td>
+                  {% if inq.status == '待处理' %}
+                  <span class="status-badge status-pending">待处理</span>
+                  {% elif inq.status == '已报价' %}
+                  <span class="status-badge status-quoted">已报价</span>
+                  {% elif inq.status == '已成交' %}
+                  <span class="status-badge status-done">已成交</span>
+                  {% elif inq.status == '已关闭' %}
+                  <span class="status-badge status-closed">已关闭</span>
+                  {% else %}
+                  <span class="status-badge status-pending">{{ inq.status }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ inq.created_at.strftime('%Y-%m-%d %H:%M') if inq.created_at else '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="empty-table">
+            <p>暂无询价记录</p>
+            <a href="/offer" class="btn btn-primary" style="margin-top:12px;display:inline-block;">立即报价</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- 快捷入口 -->
+        <div class="user-main-card">
+          <div class="card-header">
+            <div class="card-title">快捷入口</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+            <a href="/offer" style="text-align:center;padding:20px 10px;background:#fef2f0;border-radius:12px;text-decoration:none;color:#E84B36;transition:opacity .2s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <div style="font-size:1.8rem;margin-bottom:8px;">💬</div>
+              <div style="font-size:.88rem;font-weight:600;">在线报价</div>
+            </a>
+            <a href="/products" style="text-align:center;padding:20px 10px;background:#eff6ff;border-radius:12px;text-decoration:none;color:#1d4ed8;transition:opacity .2s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <div style="font-size:1.8rem;margin-bottom:8px;">🏪</div>
+              <div style="font-size:.88rem;font-weight:600;">通用现货</div>
+            </a>
+            <a href="/user/orders" style="text-align:center;padding:20px 10px;background:#f0fff4;border-radius:12px;text-decoration:none;color:#166534;transition:opacity .2s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <div style="font-size:1.8rem;margin-bottom:8px;">📦</div>
+              <div style="font-size:.88rem;font-weight:600;">我的订单</div>
+            </a>
+            <a href="/contact" style="text-align:center;padding:20px 10px;background:#fdf4ff;border-radius:12px;text-decoration:none;color:#7e22ce;transition:opacity .2s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <div style="font-size:1.8rem;margin-bottom:8px;">📞</div>
+              <div style="font-size:.88rem;font-weight:600;">联系客服</div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

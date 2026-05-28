@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}个人资料 - {{ cfg.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.user-page { background: #f7f8fa; min-height: calc(100vh - 120px); padding: 36px 0 60px; }
+.user-layout { display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: flex-start; }
+
+.user-sidebar {
+  background: #fff; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); position: sticky; top: 80px;
+}
+.user-avatar-box {
+  background: linear-gradient(135deg, #E84B36, #ff7043); padding: 28px 20px; text-align: center;
+}
+.user-avatar {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.25);
+  display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+  margin: 0 auto 10px; color: #fff;
+}
+.user-avatar-name { font-size: 1rem; font-weight: 700; color: #fff; }
+.sidebar-nav { padding: 12px 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  text-decoration: none; color: #555; font-size: .92rem; transition: all .2s;
+  border-left: 3px solid transparent;
+}
+.sidebar-nav a:hover { background: #fef2f0; color: #E84B36; }
+.sidebar-nav a.active { background: #fef2f0; color: #E84B36; border-left-color: #E84B36; font-weight: 600; }
+.sidebar-logout { padding: 12px 20px; border-top: 1px solid #f5f5f5; }
+.sidebar-logout a { color: #aaa; font-size: .88rem; text-decoration: none; }
+
+.user-main-card {
+  background: #fff; border-radius: 16px; padding: 32px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.card-title { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+.card-title::before { content: ''; display: block; width: 3px; height: 18px; background: #E84B36; border-radius: 2px; }
+
+.flash-messages { margin-bottom: 20px; }
+.flash-msg {
+  padding: 12px 16px; border-radius: 8px; font-size: .9rem; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.flash-msg.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.flash-msg.success { background: #f0fff4; color: #166534; border: 1px solid #86efac; }
+
+.profile-form { max-width: 500px; }
+.profile-section-title {
+  font-size: .8rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .08em;
+  margin: 28px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
+}
+.profile-section-title:first-child { margin-top: 0; }
+
+.form-field { margin-bottom: 18px; }
+.form-field label { display: block; font-size: .88rem; color: #555; font-weight: 500; margin-bottom: 7px; }
+.form-field input, .form-field textarea {
+  width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 11px 14px;
+  font-size: .95rem; outline: none; transition: border-color .2s; box-sizing: border-box;
+  font-family: inherit;
+}
+.form-field input:focus { border-color: #E84B36; box-shadow: 0 0 0 3px rgba(232,75,54,.1); }
+.form-field input[readonly], .form-field input:disabled {
+  background: #f9fafb; color: #9ca3af; cursor: not-allowed;
+  border-color: #f3f4f6;
+}
+.field-hint { font-size: .78rem; color: #aaa; margin-top: 5px; }
+
+.profile-actions { display: flex; align-items: center; gap: 14px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
+
+/* 密码修改折叠区 */
+.pw-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: #E84B36; font-size: .88rem; cursor: pointer; text-decoration: none; margin-bottom: 20px;
+}
+.pw-section { display: none; }
+.pw-section.open { display: block; }
+
+@media (max-width: 900px) {
+  .user-layout { grid-template-columns: 1fr; }
+  .user-sidebar { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="user-page">
+  <div class="container">
+    <div class="user-layout">
+      <!-- 侧边栏 -->
+      <aside class="user-sidebar">
+        <div class="user-avatar-box">
+          <div class="user-avatar">{{ (user.real_name or user.username or '用')[0] }}</div>
+          <div class="user-avatar-name">{{ user.real_name or user.username }}</div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="/user"><span>🏠</span> 个人中心</a>
+          <a href="/user/inquiries"><span>📋</span> 我的询价</a>
+          <a href="/user/orders"><span>📦</span> 我的订单</a>
+          <a href="/user/profile" class="active"><span>👤</span> 个人资料</a>
+        </nav>
+        <div class="sidebar-logout">
+          <a href="/logout">退出登录</a>
+        </div>
+      </aside>
+
+      <!-- 主内容 -->
+      <div>
+        <div class="user-main-card">
+          <div class="card-title">个人资料</div>
+
+          <!-- Flash 消息 -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">
+              {% if category == 'error' %}⚠️{% else %}✅{% endif %} {{ message }}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endwith %}
+
+          <form class="profile-form" method="post" action="/user/profile">
+            <!-- 基本信息 -->
+            <div class="profile-section-title">基本信息</div>
+
+            <div class="form-field">
+              <label>真实姓名</label>
+              <input type="text" name="real_name" value="{{ user.real_name or '' }}" placeholder="请输入真实姓名">
+            </div>
+
+            <div class="form-field">
+              <label>公司名称</label>
+              <input type="text" name="company" value="{{ user.company or '' }}" placeholder="选填">
+            </div>
+
+            <div class="form-field">
+              <label>邮箱地址</label>
+              <input type="email" name="email" value="{{ user.email or '' }}" placeholder="选填">
+            </div>
+
+            <!-- 只读字段 -->
+            <div class="profile-section-title">账户信息（不可修改）</div>
+
+            <div class="form-field">
+              <label>用户名</label>
+              <input type="text" value="{{ user.username }}" readonly>
+              <div class="field-hint">用户名创建后不可更改</div>
+            </div>
+
+            <div class="form-field">
+              <label>手机号</label>
+              <input type="text" value="{{ user.phone }}" readonly>
+              <div class="field-hint">如需修改手机号，请联系客服</div>
+            </div>
+
+            <!-- 保存按钮 -->
+            <div class="profile-actions">
+              <button type="submit" class="btn btn-primary">保存修改</button>
+              <a href="/user" class="btn btn-outline">返回中心</a>
+            </div>
+          </form>
+
+          <!-- 修改密码 -->
+          <div style="margin-top:32px;padding-top:24px;border-top:1px solid #f0f0f0;">
+            <div class="profile-section-title" style="margin-top:0;">安全设置</div>
+            <a class="pw-toggle" onclick="togglePw()">🔒 修改密码 ▾</a>
+            <div class="pw-section" id="pwSection">
+              <form method="post" action="/user/change-password" style="max-width:500px;">
+                <div class="form-field">
+                  <label>当前密码</label>
+                  <input type="password" name="old_password" placeholder="请输入当前密码" required>
+                </div>
+                <div class="form-field">
+                  <label>新密码</label>
+                  <input type="password" name="new_password" placeholder="至少8位" required minlength="8">
+                </div>
+                <div class="form-field">
+                  <label>确认新密码</label>
+                  <input type="password" name="confirm_password" placeholder="再次输入新密码" required>
+                </div>
+                <button type="submit" class="btn btn-outline" style="border-color:#E84B36;color:#E84B36;">确认修改密码</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePw() {
+  const sec = document.getElementById('pwSection');
+  sec.classList.toggle('open');
+}
+</script>
+{% endblock %}

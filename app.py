@@ -1,193 +1,576 @@
 # -*- coding: utf-8 -*-
 """
-印刷公司官网 - Flask 主应用
+印刷公司官网 - Flask 主应用（全面升级版）
+对标：智盒包装(zhihebox.com) + 聚意印刷(juyiyinshua.com)
 """
 
 import os
+import json
+import uuid
+import csv
+import io
 from datetime import datetime
 from functools import wraps
 from flask import (
     Flask, render_template, request, jsonify,
-    redirect, url_for, flash, session
+    redirect, url_for, flash, session, send_file,
+    make_response
 )
 from werkzeug.utils import secure_filename
 
 from config import Config
-from models import db, Inquiry, Product, ContactMessage, SiteConfig, User
+from models import (
+    db, AdminUser, FrontUser, Banner, SiteConfig, Article, Coupon,
+    ProductCategory, BoxType, QuotationRule, StockProduct,
+    Inquiry, Order, ContactMessage, init_default_data
+)
 
 
 def create_app():
     app = Flask(__name__,
-                template_folder='templates',
                 static_folder='static',
-                static_url_path='/static')
+                template_folder='templates')
     app.config.from_object(Config)
 
     # 确保上传目录存在
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    # 初始化数据库
     db.init_app(app)
 
-    # 创建所有表 + 初始化默认数据
-    with app.app_context():
-        db.create_all()
-        _init_default_data()
+    # 注册蓝图（路由）
+    _register_frontend_routes(app)
+    _register_api_routes(app)
+    _register_admin_routes(app)
 
-    # ========== 路由 ==========
+    return app
 
-    # --- 前台页面 ---
+
+# ============================================================
+# 认证装饰器
+# ============================================================
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('is_admin'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def super_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('is_admin'):
+            return redirect(url_for('admin_login'))
+        if session.get('admin_role') != 'super_admin':
+            flash('此操作需要超级管理员权限', 'error')
+            return redirect(url_for('admin_dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def front_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('user_id'):
+            return redirect(url_for('user_login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ============================================================
+# 辅助函数
+# ============================================================
+
+def allowed_file(filename, allowed_set):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
+
+
+def get_site_config():
+    """获取常用网站配置"""
+    return {
+        'site_name': SiteConfig.get('site_name', Config.SITE_NAME),
+        'site_phone': SiteConfig.get('site_phone', Config.SITE_PHONE),
+        'site_phone_check': SiteConfig.get('site_phone_check', Config.SITE_PHONE_CHECK),
+        'site_phone_complaint': SiteConfig.get('site_phone_complaint', Config.SITE_PHONE_COMPLAINT),
+        'site_wechat': SiteConfig.get('site_wechat', Config.SITE_WECHAT),
+        'site_email': SiteConfig.get('site_email', Config.SITE_EMAIL),
+        'site_address': SiteConfig.get('site_address', Config.SITE_ADDRESS),
+        'site_icp': SiteConfig.get('site_icp', Config.SITE_ICP),
+    }
+
+
+def _register_frontend_routes(app):
+    """注册前台路由"""
+
     @app.route('/')
     def index():
-        products = Product.query.filter_by(is_active=True).order_by(Product.sort_order).all()
-        return render_template('index.html', products=products, config=_get_site_config())
+        categories = ProductCategory.query.filter_by(is_active=True).order_by(ProductCategory.sort_order).all()
+        banners = Banner.query.filter_by(is_active=True).order_by(Banner.sort_order).all()
+        hot_stocks = StockProduct.query.filter_by(is_active=True, is_hot=True).order_by(
+            StockProduct.sales_count.desc()).limit(6).all()
+        stats = {
+            'experience': SiteConfig.get('stat_experience', '10'),
+            'clients': SiteConfig.get('stat_clients', '5000'),
+            'projects': SiteConfig.get('stat_projects', '50000'),
+            'satisfaction': SiteConfig.get('stat_satisfaction', '99'),
+        }
+        cfg = get_site_config()
+        return render_template('index.html',
+                               categories=categories,
+                               banners=banners,
+                               hot_stocks=hot_stocks,
+                               stats=stats,
+                               cfg=cfg)
+
+    @app.route('/offer')
+    @app.route('/offer/<int:box_type_id>')
+    def offer(box_type_id=None):
+        categories = ProductCategory.query.filter_by(is_active=True).order_by(ProductCategory.sort_order).all()
+        selected_box = None
+        if box_type_id:
+            selected_box = BoxType.query.get(box_type_id)
+        cfg = get_site_config()
+        return render_template('offer.html',
+                               categories=categories,
+                               selected_box=selected_box,
+                               cfg=cfg)
+
+    @app.route('/products')
+    def products():
+        category = request.args.get('category', '')
+        keyword = request.args.get('q', '')
+        page = request.args.get('page', 1, type=int)
+
+        query = StockProduct.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        if keyword:
+            query = query.filter(StockProduct.name.contains(keyword))
+
+        pagination = query.order_by(StockProduct.sales_count.desc()).paginate(
+            page=page, per_page=Config.STOCK_PER_PAGE, error_out=False)
+
+        # 所有分类
+        cats = db.session.query(StockProduct.category).filter_by(is_active=True).distinct().all()
+        categories = [c[0] for c in cats if c[0]]
+
+        cfg = get_site_config()
+        return render_template('products.html',
+                               products=pagination.items,
+                               pagination=pagination,
+                               categories=categories,
+                               current_category=category,
+                               keyword=keyword,
+                               cfg=cfg)
 
     @app.route('/product/<int:pid>')
     def product_detail(pid):
-        product = Product.query.get_or_404(pid)
-        return render_template('product_detail.html', product=product)
+        product = StockProduct.query.get_or_404(pid)
+        related = StockProduct.query.filter_by(
+            category=product.category, is_active=True
+        ).filter(StockProduct.id != pid).limit(4).all()
+        cfg = get_site_config()
+        return render_template('product_detail.html',
+                               product=product,
+                               related=related,
+                               cfg=cfg)
 
-    # --- API: 提交询价 ---
-    @app.route('/api/inquiry', methods=['POST'])
-    def submit_inquiry():
-        try:
-            data = request.get_json() or request.form
+    @app.route('/about')
+    def about():
+        cfg = get_site_config()
+        return render_template('about.html', cfg=cfg)
 
-            inquiry = Inquiry(
-                name=data.get('name', '').strip(),
-                phone=data.get('phone', '').strip(),
-                company=data.get('company', '').strip(),
-                product_type=data.get('product_type', '').strip(),
-                length=float(data['length']) if data.get('length') else None,
-                width=float(data['width']) if data.get('width') else None,
-                height=float(data['height']) if data.get('height') else None,
-                quantity=int(data.get('quantity', 0)),
-                material=data.get('material', '').strip(),
-                craft=data.get('craft', '').strip(),
-                remark=data.get('remark', '').strip(),
-            )
+    @app.route('/contact')
+    def contact():
+        cfg = get_site_config()
+        return render_template('contact.html', cfg=cfg)
 
-            # 文件上传
-            if 'file' in request.files:
-                f = request.files['file']
-                if f and f.filename:
-                    fname = secure_filename(f.filename)
-                    # 加时间戳防重名
-                    import time
-                    ext = os.path.splitext(fname)[1]
-                    fname = f"{int(time.time())}{ext}"
-                    f.save(os.path.join(app.config['UPLOAD_FOLDER'], fname))
-                    inquiry.file_name = fname
-
-            if not inquiry.name or not inquiry.phone or not inquiry.product_type:
-                return jsonify({'success': False, 'message': '请填写姓名、电话和产品类型'}), 400
-
-            if inquiry.quantity <= 0:
-                return jsonify({'success': False, 'message': '请填写有效的数量'}), 400
-
-            db.session.add(inquiry)
-            db.session.commit()
-
-            return jsonify({'success': True, 'message': '询价提交成功！我们会尽快联系您。', 'id': inquiry.id})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'message': f'提交失败: {str(e)}'}), 500
-
-    # --- API: 获取产品列表 ---
-    @app.route('/api/products')
-    def get_products():
+    @app.route('/guide')
+    def guide():
         category = request.args.get('category', '')
-        query = Product.query.filter_by(is_active=True)
+        page = request.args.get('page', 1, type=int)
+        query = Article.query.filter_by(is_active=True)
         if category:
             query = query.filter_by(category=category)
-        products = query.order_by(Product.sort_order).all()
-        return jsonify([p.to_dict() for p in products])
+        pagination = query.order_by(Article.sort_order, Article.created_at.desc()).paginate(
+            page=page, per_page=10, error_out=False)
+        cats = db.session.query(Article.category).filter_by(is_active=True).distinct().all()
+        categories = [c[0] for c in cats if c[0]]
+        cfg = get_site_config()
+        return render_template('guide.html',
+                               articles=pagination.items,
+                               pagination=pagination,
+                               categories=categories,
+                               current_category=category,
+                               cfg=cfg)
 
-    # --- API: 获取产品分类 ---
-    @app.route('/api/product-categories')
-    def get_categories():
-        categories = db.session.query(Product.category).filter_by(is_active=True).distinct().all()
-        return jsonify([c[0] for c in categories])
+    @app.route('/guide/<int:aid>')
+    def guide_detail(aid):
+        article = Article.query.get_or_404(aid)
+        article.view_count = (article.view_count or 0) + 1
+        db.session.commit()
+        cfg = get_site_config()
+        return render_template('guide_detail.html', article=article, cfg=cfg)
 
-    # --- API: 提交留言 ---
-    @app.route('/api/contact', methods=['POST'])
-    def submit_contact():
-        try:
-            data = request.get_json() or {}
-            msg = ContactMessage(
-                name=data.get('name', '').strip(),
-                phone=data.get('phone', '').strip(),
-                email=data.get('email', '').strip(),
-                message=data.get('message', '').strip(),
-            )
-            if not msg.name or not msg.phone or not msg.message:
-                return jsonify({'success': False, 'message': '请填写姓名、电话和留言内容'}), 400
-            db.session.add(msg)
+    @app.route('/activity')
+    def activity():
+        coupons = Coupon.query.filter_by(is_active=True).all()
+        valid_coupons = [c for c in coupons if c.is_valid]
+        articles = Article.query.filter_by(category='活动资讯', is_active=True).limit(6).all()
+        cfg = get_site_config()
+        return render_template('activity.html',
+                               coupons=valid_coupons,
+                               articles=articles,
+                               cfg=cfg)
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def user_login():
+        if session.get('user_id'):
+            return redirect(url_for('user_center'))
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            user = FrontUser.query.filter(
+                (FrontUser.username == username) | (FrontUser.phone == username)
+            ).first()
+            if user and user.check_password(password) and user.is_active:
+                session['user_id'] = user.id
+                session['user_name'] = user.real_name or user.username
+                user.last_login = datetime.now()
+                db.session.commit()
+                next_url = request.args.get('next') or url_for('user_center')
+                return redirect(next_url)
+            flash('用户名/手机号或密码错误', 'error')
+        cfg = get_site_config()
+        return render_template('login.html', cfg=cfg)
+
+    @app.route('/register', methods=['GET', 'POST'])
+    def user_register():
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            phone = request.form.get('phone', '').strip()
+            password = request.form.get('password', '').strip()
+            real_name = request.form.get('real_name', '').strip()
+
+            if not username or not phone or not password:
+                flash('请填写必填字段', 'error')
+            elif FrontUser.query.filter_by(username=username).first():
+                flash('用户名已被使用', 'error')
+            elif FrontUser.query.filter_by(phone=phone).first():
+                flash('该手机号已注册', 'error')
+            else:
+                user = FrontUser(username=username, phone=phone, real_name=real_name)
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
+                session['user_id'] = user.id
+                session['user_name'] = user.real_name or user.username
+                return redirect(url_for('user_center'))
+        cfg = get_site_config()
+        return render_template('register.html', cfg=cfg)
+
+    @app.route('/logout')
+    def user_logout():
+        session.pop('user_id', None)
+        session.pop('user_name', None)
+        return redirect(url_for('index'))
+
+    @app.route('/user')
+    @front_login_required
+    def user_center():
+        user = FrontUser.query.get(session['user_id'])
+        inquiries = Inquiry.query.filter_by(user_id=user.id).order_by(
+            Inquiry.created_at.desc()).limit(5).all()
+        orders = Order.query.filter_by(user_id=user.id).order_by(
+            Order.created_at.desc()).limit(5).all()
+        cfg = get_site_config()
+        return render_template('user/center.html', user=user, inquiries=inquiries, orders=orders, cfg=cfg)
+
+    @app.route('/user/inquiries')
+    @front_login_required
+    def user_inquiries():
+        page = request.args.get('page', 1, type=int)
+        pagination = Inquiry.query.filter_by(user_id=session['user_id']).order_by(
+            Inquiry.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+        cfg = get_site_config()
+        return render_template('user/inquiries.html', pagination=pagination, cfg=cfg)
+
+    @app.route('/user/orders')
+    @front_login_required
+    def user_orders():
+        page = request.args.get('page', 1, type=int)
+        pagination = Order.query.filter_by(user_id=session['user_id']).order_by(
+            Order.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+        cfg = get_site_config()
+        return render_template('user/orders.html', pagination=pagination, cfg=cfg)
+
+    @app.route('/user/profile', methods=['GET', 'POST'])
+    @front_login_required
+    def user_profile():
+        user = FrontUser.query.get(session['user_id'])
+        if request.method == 'POST':
+            user.real_name = request.form.get('real_name', '').strip()
+            user.company = request.form.get('company', '').strip()
+            user.email = request.form.get('email', '').strip()
             db.session.commit()
-            return jsonify({'success': True, 'message': '留言已提交！'})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'message': f'提交失败: {str(e)}'}), 500
+            flash('个人信息已更新', 'success')
+        cfg = get_site_config()
+        return render_template('user/profile.html', user=user, cfg=cfg)
 
-    # --- API: 简易报价估算 ---
-    @app.route('/api/estimate-price', methods=['POST'])
-    def estimate_price():
-        """根据产品类型和数量返回估算价格区间"""
+
+def _register_api_routes(app):
+    """注册前台 API 路由"""
+
+    @app.route('/api/categories')
+    def api_categories():
+        cats = ProductCategory.query.filter_by(is_active=True).order_by(ProductCategory.sort_order).all()
+        result = []
+        for cat in cats:
+            cat_dict = cat.to_dict()
+            cat_dict['box_types'] = [bt.to_dict() for bt in
+                                     cat.box_types.filter_by(is_active=True).order_by(BoxType.sort_order).all()]
+            result.append(cat_dict)
+        return jsonify(result)
+
+    @app.route('/api/box-type/<int:btid>')
+    def api_box_type(btid):
+        bt = BoxType.query.get_or_404(btid)
+        return jsonify(bt.to_dict(with_rules=True))
+
+    @app.route('/api/offer/calculate', methods=['POST'])
+    def api_calculate_price():
         data = request.get_json() or {}
-        product_type = data.get('product_type', '')
+        box_type_id = data.get('box_type_id')
         quantity = int(data.get('quantity', 0))
+        material = data.get('material', '通用')
 
-        # 基础报价规则 (可根据实际业务调整)
-        price_rules = {
-            '名片': {'base': 50, 'unit': 0.05, 'min_order': 100},
-            '画册': {'base': 200, 'unit': 2.5, 'min_order': 50},
-            '彩页': {'base': 80, 'unit': 0.15, 'min_order': 200},
-            '海报': {'base': 100, 'unit': 0.3, 'min_order': 50},
-            '手提袋': {'base': 300, 'unit': 1.5, 'min_order': 100},
-            '纸盒': {'base': 500, 'unit': 3.0, 'min_order': 50},
-            '不干胶': {'base': 60, 'unit': 0.08, 'min_order': 500},
-            '吊牌': {'base': 80, 'unit': 0.1, 'min_order': 200},
-        }
+        if not box_type_id or quantity <= 0:
+            return jsonify({'ok': False, 'msg': '请选择盒型并填写数量'})
 
-        rule = price_rules.get(product_type)
-        if not rule:
-            return jsonify({'success': False, 'message': '暂不支持该产品的在线估价'})
+        bt = BoxType.query.get(box_type_id)
+        if not bt:
+            return jsonify({'ok': False, 'msg': '盒型不存在'})
 
-        if quantity < rule['min_order']:
+        if quantity < bt.min_quantity:
             return jsonify({
-                'success': True,
-                'min_order': rule['min_order'],
-                'message': f'{product_type}最小起订量为{rule["min_order"]}',
-                'low': None, 'high': None,
+                'ok': False,
+                'msg': f'该盒型最低起印量为 {bt.min_quantity} 个'
             })
 
-        estimated = rule['base'] + quantity * rule['unit']
-        low = round(estimated * 0.85, 2)
-        high = round(estimated * 1.15, 2)
+        # 查找匹配规则（先找材质匹配，再找通用）
+        rule = QuotationRule.query.filter_by(
+            box_type_id=box_type_id, material=material, is_active=True).first()
+        if not rule:
+            rule = QuotationRule.query.filter_by(
+                box_type_id=box_type_id, material='通用', is_active=True).first()
+        if not rule:
+            return jsonify({'ok': False, 'msg': '暂无报价规则，请联系客服'})
+
+        # 从阶梯价格计算
+        unit_price = rule.unit_price
+        try:
+            ranges = json.loads(rule.range_config)
+            for r in ranges:
+                if r['min'] <= quantity <= r.get('max', 999999):
+                    unit_price = r['unit_price']
+                    break
+        except Exception:
+            pass
+
+        subtotal = rule.base_price + unit_price * quantity
+        # 给出一个浮动区间（±10%）
+        price_min = round(subtotal * 0.9, 2)
+        price_max = round(subtotal * 1.1, 2)
 
         return jsonify({
-            'success': True,
-            'low': low,
-            'high': high,
-            'message': f'预估价格: ¥{low} ~ ¥{high}（最终价格以实际报价为准）',
+            'ok': True,
+            'unit_price': unit_price,
+            'base_price': rule.base_price,
+            'subtotal': round(subtotal, 2),
+            'price_min': price_min,
+            'price_max': price_max,
+            'msg': f'参考报价：¥{price_min} ~ ¥{price_max}（含起步费，最终以客服确认为准）'
         })
 
-    # ========== 后台管理 ==========
+    @app.route('/api/offer/submit', methods=['POST'])
+    def api_submit_inquiry():
+        # 支持 JSON 和 multipart/form-data
+        if request.content_type and 'application/json' in request.content_type:
+            data = request.get_json() or {}
+        else:
+            data = request.form.to_dict()
 
-    def login_required(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            if not session.get('is_admin'):
-                return redirect(url_for('admin_login'))
-            return f(*args, **kwargs)
-        return decorated
+        name = data.get('name', '').strip()
+        phone = data.get('phone', '').strip()
+        product_type = data.get('product_type', '').strip()
+        quantity_str = data.get('quantity', '0')
+
+        if not name:
+            return jsonify({'ok': False, 'msg': '请填写姓名'})
+        if not phone or len(phone) < 7:
+            return jsonify({'ok': False, 'msg': '请填写正确的手机号'})
+        if not product_type:
+            return jsonify({'ok': False, 'msg': '请选择产品类型'})
+
+        try:
+            quantity = int(quantity_str)
+            if quantity <= 0:
+                raise ValueError
+        except ValueError:
+            return jsonify({'ok': False, 'msg': '请填写正确的数量'})
+
+        # 文件上传处理
+        file_name = None
+        if 'file' in request.files:
+            f = request.files['file']
+            if f and f.filename and allowed_file(f.filename, Config.ALLOWED_FILE_EXTENSIONS):
+                ext = f.filename.rsplit('.', 1)[1].lower()
+                file_name = f'{uuid.uuid4().hex}.{ext}'
+                f.save(os.path.join(Config.UPLOAD_FOLDER, file_name))
+
+        inquiry = Inquiry(
+            user_id=session.get('user_id'),
+            name=name,
+            phone=phone,
+            company=data.get('company', ''),
+            email=data.get('email', ''),
+            box_type_id=data.get('box_type_id') or None,
+            product_type=product_type,
+            length=float(data.get('length') or 0) or None,
+            width=float(data.get('width') or 0) or None,
+            height=float(data.get('height') or 0) or None,
+            quantity=quantity,
+            material=data.get('material', ''),
+            craft=data.get('craft', ''),
+            remark=data.get('remark', ''),
+            file_name=file_name,
+            estimated_price_min=float(data.get('price_min') or 0) or None,
+            estimated_price_max=float(data.get('price_max') or 0) or None,
+        )
+        db.session.add(inquiry)
+        db.session.commit()
+
+        return jsonify({
+            'ok': True,
+            'msg': '询价提交成功！我们的客服会在2小时内与您联系，请保持手机畅通。',
+            'inquiry_id': inquiry.id
+        })
+
+    @app.route('/api/stock-products')
+    def api_stock_products():
+        category = request.args.get('category', '')
+        keyword = request.args.get('q', '')
+        limit = request.args.get('limit', 12, type=int)
+
+        query = StockProduct.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        if keyword:
+            query = query.filter(StockProduct.name.contains(keyword))
+        items = query.order_by(StockProduct.sales_count.desc()).limit(limit).all()
+        return jsonify([p.to_dict() for p in items])
+
+    @app.route('/api/banners')
+    def api_banners():
+        banners = Banner.query.filter_by(is_active=True).order_by(Banner.sort_order).all()
+        return jsonify([b.to_dict() for b in banners])
+
+    @app.route('/api/articles')
+    def api_articles():
+        category = request.args.get('category', '')
+        limit = request.args.get('limit', 10, type=int)
+        query = Article.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        items = query.order_by(Article.created_at.desc()).limit(limit).all()
+        return jsonify([a.to_dict() for a in items])
+
+    @app.route('/api/coupons')
+    def api_coupons():
+        coupons = Coupon.query.filter_by(is_active=True).all()
+        return jsonify([c.to_dict() for c in coupons if c.is_valid])
+
+    @app.route('/api/contact', methods=['POST'])
+    def api_contact():
+        data = request.get_json() or request.form.to_dict()
+        name = data.get('name', '').strip()
+        phone = data.get('phone', '').strip()
+        message = data.get('message', '').strip()
+
+        if not name or not phone or not message:
+            return jsonify({'ok': False, 'msg': '请填写姓名、电话和留言内容'})
+
+        msg = ContactMessage(
+            name=name, phone=phone,
+            email=data.get('email', ''),
+            message=message
+        )
+        db.session.add(msg)
+        db.session.commit()
+        return jsonify({'ok': True, 'msg': '留言提交成功，我们会尽快回复您！'})
+
+    @app.route('/api/user/register', methods=['POST'])
+    def api_user_register():
+        data = request.get_json() or {}
+        username = data.get('username', '').strip()
+        phone = data.get('phone', '').strip()
+        password = data.get('password', '').strip()
+
+        if not username or not phone or not password:
+            return jsonify({'ok': False, 'msg': '请填写完整信息'})
+        if FrontUser.query.filter_by(username=username).first():
+            return jsonify({'ok': False, 'msg': '用户名已存在'})
+        if FrontUser.query.filter_by(phone=phone).first():
+            return jsonify({'ok': False, 'msg': '手机号已注册'})
+
+        user = FrontUser(username=username, phone=phone)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        session['user_id'] = user.id
+        session['user_name'] = user.username
+        return jsonify({'ok': True, 'msg': '注册成功'})
+
+    @app.route('/api/user/login', methods=['POST'])
+    def api_user_login():
+        data = request.get_json() or {}
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+
+        user = FrontUser.query.filter(
+            (FrontUser.username == username) | (FrontUser.phone == username)
+        ).first()
+        if not user or not user.check_password(password) or not user.is_active:
+            return jsonify({'ok': False, 'msg': '账号或密码错误'})
+
+        session['user_id'] = user.id
+        session['user_name'] = user.real_name or user.username
+        user.last_login = datetime.now()
+        db.session.commit()
+        return jsonify({'ok': True, 'msg': '登录成功', 'user': user.to_dict()})
+
+    @app.route('/api/user/logout', methods=['POST'])
+    def api_user_logout():
+        session.pop('user_id', None)
+        session.pop('user_name', None)
+        return jsonify({'ok': True})
+
+
+def _register_admin_routes(app):
+    """注册后台管理路由"""
+
+    # ── 认证 ──
 
     @app.route('/admin/login', methods=['GET', 'POST'])
     def admin_login():
+        if session.get('is_admin'):
+            return redirect(url_for('admin_dashboard'))
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
-            password = request.form.get('password', '')
-            user = User.query.filter_by(username=username, is_active=True).first()
+            password = request.form.get('password', '').strip()
+            user = AdminUser.query.filter_by(username=username, is_active=True).first()
             if user and user.check_password(password):
                 session['is_admin'] = True
                 session['admin_user'] = user.real_name or user.username
@@ -196,15 +579,21 @@ def create_app():
                 user.last_login = datetime.now()
                 db.session.commit()
                 return redirect(url_for('admin_dashboard'))
-            flash('用户名或密码错误')
+            flash('用户名或密码错误', 'error')
         return render_template('admin/login.html')
 
     @app.route('/admin/logout')
     def admin_logout():
-        session.clear()
+        session.pop('is_admin', None)
+        session.pop('admin_user', None)
+        session.pop('admin_role', None)
+        session.pop('admin_uid', None)
         return redirect(url_for('admin_login'))
 
+    # ── 仪表盘 ──
+
     @app.route('/admin')
+    @app.route('/admin/dashboard')
     @login_required
     def admin_dashboard():
         stats = {
@@ -214,325 +603,643 @@ def create_app():
             'completed': Inquiry.query.filter_by(status='已成交').count(),
             'total_messages': ContactMessage.query.count(),
             'unread_messages': ContactMessage.query.filter_by(is_read=False).count(),
-            'total_products': Product.query.count(),
-            'active_products': Product.query.filter_by(is_active=True).count(),
+            'total_products': StockProduct.query.count(),
+            'active_products': StockProduct.query.filter_by(is_active=True).count(),
+            'total_orders': Order.query.count(),
+            'total_users': FrontUser.query.count(),
+            'total_box_types': BoxType.query.count(),
         }
-        recent_inquiries = Inquiry.query.order_by(Inquiry.created_at.desc()).limit(5).all()
-        return render_template('admin/dashboard.html', stats=stats, recent_inquiries=recent_inquiries)
+        recent_inquiries = Inquiry.query.order_by(Inquiry.created_at.desc()).limit(8).all()
+        recent_messages = ContactMessage.query.filter_by(is_read=False).order_by(
+            ContactMessage.created_at.desc()).limit(5).all()
+        return render_template('admin/dashboard.html',
+                               stats=stats,
+                               recent_inquiries=recent_inquiries,
+                               recent_messages=recent_messages)
 
-    # --- 询价管理 ---
+    @app.route('/admin/api/stats')
+    @login_required
+    def admin_api_stats():
+        from sqlalchemy import func
+        # 近7天询价趋势
+        trend_data = []
+        for i in range(6, -1, -1):
+            from datetime import timedelta
+            day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            day_start = day - timedelta(days=i)
+            day_end = day_start + timedelta(days=1)
+            count = Inquiry.query.filter(
+                Inquiry.created_at >= day_start,
+                Inquiry.created_at < day_end
+            ).count()
+            trend_data.append({'date': day_start.strftime('%m/%d'), 'count': count})
+
+        # 盒型分类分布
+        cat_stats = db.session.query(
+            Inquiry.product_type,
+            func.count(Inquiry.id).label('cnt')
+        ).group_by(Inquiry.product_type).order_by(func.count(Inquiry.id).desc()).limit(8).all()
+
+        return jsonify({
+            'trend': trend_data,
+            'categories': [{'name': r[0], 'count': r[1]} for r in cat_stats],
+        })
+
+    # ── 询价管理 ──
+
     @app.route('/admin/inquiries')
     @login_required
     def admin_inquiries():
-        status_filter = request.args.get('status', '')
+        status = request.args.get('status', '')
         page = request.args.get('page', 1, type=int)
-        per_page = 15
         query = Inquiry.query
-        if status_filter:
-            query = query.filter_by(status=status_filter)
+        if status:
+            query = query.filter_by(status=status)
         pagination = query.order_by(Inquiry.created_at.desc()).paginate(
-            page=page, per_page=per_page, error_out=False)
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
         return render_template('admin/inquiries.html',
-                               inquiries=pagination.items,
                                pagination=pagination,
-                               status_filter=status_filter)
+                               current_status=status)
 
-    @app.route('/admin/inquiry/<int:iid>', methods=['GET'])
+    @app.route('/admin/inquiry/<int:iid>', methods=['GET', 'POST'])
     @login_required
     def admin_inquiry_detail(iid):
         inquiry = Inquiry.query.get_or_404(iid)
+        if request.method == 'POST':
+            inquiry.status = request.form.get('status', inquiry.status)
+            price_str = request.form.get('quote_price', '')
+            inquiry.quote_price = float(price_str) if price_str else None
+            inquiry.quote_remark = request.form.get('quote_remark', '')
+            db.session.commit()
+            flash('询价单已更新', 'success')
+            return redirect(url_for('admin_inquiry_detail', iid=iid))
         return render_template('admin/inquiry_detail.html', inquiry=inquiry)
-
-    @app.route('/admin/inquiry/<int:iid>', methods=['POST'])
-    @login_required
-    def admin_update_inquiry(iid):
-        inquiry = Inquiry.query.get_or_404(iid)
-        inquiry.status = request.form.get('status', inquiry.status)
-        inquiry.quote_price = float(request.form['quote_price']) if request.form.get('quote_price') else None
-        inquiry.quote_remark = request.form.get('quote_remark', '')
-        db.session.commit()
-        flash('询价信息已更新')
-        return redirect(url_for('admin_inquiry_detail', iid=iid))
 
     @app.route('/admin/inquiry/<int:iid>/delete', methods=['POST'])
     @login_required
-    def admin_delete_inquiry(iid):
+    def admin_inquiry_delete(iid):
         inquiry = Inquiry.query.get_or_404(iid)
         db.session.delete(inquiry)
         db.session.commit()
-        flash('询价记录已删除')
+        flash('询价单已删除', 'success')
         return redirect(url_for('admin_inquiries'))
 
     @app.route('/admin/inquiry/export')
     @login_required
-    def admin_export_inquiries():
-        """导出询价数据为 CSV"""
-        import io
-        import csv
+    def admin_inquiry_export():
+        inquiries = Inquiry.query.order_by(Inquiry.created_at.desc()).all()
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(['ID', '姓名', '电话', '公司', '产品类型', '长(mm)', '宽(mm)', '高(mm)',
-                         '数量', '材质', '工艺', '备注', '状态', '报价', '报价备注', '提交时间'])
-
-        for i in Inquiry.query.order_by(Inquiry.created_at.desc()).all():
+        writer.writerow(['ID', '姓名', '电话', '公司', '产品类型', '数量', '材质', '工艺', '状态', '报价', '提交时间'])
+        for inq in inquiries:
             writer.writerow([
-                i.id, i.name, i.phone, i.company, i.product_type,
-                i.length, i.width, i.height, i.quantity,
-                i.material, i.craft, i.remark, i.status,
-                i.quote_price or '', i.quote_remark or '',
-                i.created_at.strftime('%Y-%m-%d %H:%M') if i.created_at else '',
+                inq.id, inq.name, inq.phone, inq.company or '',
+                inq.product_type, inq.quantity, inq.material or '',
+                inq.craft or '', inq.status, inq.quote_price or '',
+                inq.created_at.strftime('%Y-%m-%d %H:%M') if inq.created_at else '',
             ])
+        output.seek(0)
+        response = make_response(output.getvalue().encode('utf-8-sig'))
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8-sig'
+        response.headers['Content-Disposition'] = f'attachment; filename=inquiries_{datetime.now().strftime("%Y%m%d")}.csv'
+        return response
 
-        from flask import Response
-        buf = io.BytesIO()
-        buf.write(output.getvalue().encode('utf-8-sig'))
-        buf.seek(0)
-        return Response(buf.read(), mimetype='text/csv',
-                        headers={'Content-Disposition': 'attachment; filename=inquiries.csv'})
+    # ── 现货产品管理 ──
 
-    # --- 产品管理 ---
     @app.route('/admin/products')
     @login_required
     def admin_products():
-        products = Product.query.order_by(Product.sort_order).all()
-        return render_template('admin/products.html', products=products)
+        category = request.args.get('category', '')
+        page = request.args.get('page', 1, type=int)
+        query = StockProduct.query
+        if category:
+            query = query.filter_by(category=category)
+        pagination = query.order_by(StockProduct.sort_order, StockProduct.id.desc()).paginate(
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+        cats = db.session.query(StockProduct.category).distinct().all()
+        categories = [c[0] for c in cats if c[0]]
+        return render_template('admin/products.html',
+                               pagination=pagination,
+                               categories=categories,
+                               current_category=category)
 
     @app.route('/admin/product/add', methods=['GET', 'POST'])
     @login_required
-    def admin_add_product():
+    def admin_product_add():
         if request.method == 'POST':
-            product = Product(
-                name=request.form['name'],
-                category=request.form['category'],
+            product = StockProduct(
+                name=request.form.get('name', '').strip(),
+                category=request.form.get('category', '').strip(),
                 description=request.form.get('description', ''),
-                min_price=float(request.form['min_price']) if request.form.get('min_price') else None,
+                price=float(request.form.get('price', 0)),
+                original_price=float(request.form.get('original_price') or 0) or None,
                 unit=request.form.get('unit', '个'),
+                min_order=int(request.form.get('min_order', 1)),
+                sales_count=int(request.form.get('sales_count', 0)),
+                is_hot='is_hot' in request.form,
                 sort_order=int(request.form.get('sort_order', 0)),
-                is_active=True,
             )
             if 'image' in request.files:
                 f = request.files['image']
-                if f and f.filename:
-                    import time
-                    ext = os.path.splitext(secure_filename(f.filename))[1]
-                    fname = f"product_{int(time.time())}{ext}"
-                    f.save(os.path.join(app.config['UPLOAD_FOLDER'], fname))
+                if f and f.filename and allowed_file(f.filename, Config.ALLOWED_IMAGE_EXTENSIONS):
+                    ext = f.filename.rsplit('.', 1)[1].lower()
+                    fname = f'{uuid.uuid4().hex}.{ext}'
+                    f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
                     product.image = f'/static/uploads/{fname}'
             db.session.add(product)
             db.session.commit()
-            flash('产品添加成功')
+            flash('产品已添加', 'success')
             return redirect(url_for('admin_products'))
         return render_template('admin/product_form.html', product=None)
 
     @app.route('/admin/product/<int:pid>/edit', methods=['GET', 'POST'])
     @login_required
-    def admin_edit_product(pid):
-        product = Product.query.get_or_404(pid)
+    def admin_product_edit(pid):
+        product = StockProduct.query.get_or_404(pid)
         if request.method == 'POST':
-            product.name = request.form['name']
-            product.category = request.form['category']
+            product.name = request.form.get('name', '').strip()
+            product.category = request.form.get('category', '').strip()
             product.description = request.form.get('description', '')
-            product.min_price = float(request.form['min_price']) if request.form.get('min_price') else None
+            product.price = float(request.form.get('price', 0))
+            product.original_price = float(request.form.get('original_price') or 0) or None
             product.unit = request.form.get('unit', '个')
+            product.min_order = int(request.form.get('min_order', 1))
+            product.sales_count = int(request.form.get('sales_count', 0))
+            product.is_hot = 'is_hot' in request.form
             product.sort_order = int(request.form.get('sort_order', 0))
             if 'image' in request.files:
                 f = request.files['image']
-                if f and f.filename:
-                    import time
-                    ext = os.path.splitext(secure_filename(f.filename))[1]
-                    fname = f"product_{int(time.time())}{ext}"
-                    f.save(os.path.join(app.config['UPLOAD_FOLDER'], fname))
+                if f and f.filename and allowed_file(f.filename, Config.ALLOWED_IMAGE_EXTENSIONS):
+                    ext = f.filename.rsplit('.', 1)[1].lower()
+                    fname = f'{uuid.uuid4().hex}.{ext}'
+                    f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
                     product.image = f'/static/uploads/{fname}'
             db.session.commit()
-            flash('产品更新成功')
+            flash('产品已更新', 'success')
             return redirect(url_for('admin_products'))
         return render_template('admin/product_form.html', product=product)
 
     @app.route('/admin/product/<int:pid>/toggle', methods=['POST'])
     @login_required
-    def admin_toggle_product(pid):
-        product = Product.query.get_or_404(pid)
+    def admin_product_toggle(pid):
+        product = StockProduct.query.get_or_404(pid)
         product.is_active = not product.is_active
         db.session.commit()
-        return jsonify({'success': True, 'is_active': product.is_active})
+        return jsonify({'ok': True, 'is_active': product.is_active})
 
     @app.route('/admin/product/<int:pid>/delete', methods=['POST'])
     @login_required
-    def admin_delete_product(pid):
-        product = Product.query.get_or_404(pid)
+    def admin_product_delete(pid):
+        product = StockProduct.query.get_or_404(pid)
         db.session.delete(product)
         db.session.commit()
-        flash('产品已删除')
+        flash('产品已删除', 'success')
         return redirect(url_for('admin_products'))
 
-    # --- 留言管理 ---
+    # ── 盒型管理 ──
+
+    @app.route('/admin/box-types')
+    @login_required
+    def admin_box_types():
+        categories = ProductCategory.query.order_by(ProductCategory.sort_order).all()
+        cat_id = request.args.get('category_id', 0, type=int)
+        query = BoxType.query
+        if cat_id:
+            query = query.filter_by(category_id=cat_id)
+        box_types = query.order_by(BoxType.sort_order).all()
+        return render_template('admin/box_types.html',
+                               categories=categories,
+                               box_types=box_types,
+                               current_cat_id=cat_id)
+
+    @app.route('/admin/box-type/add', methods=['GET', 'POST'])
+    @login_required
+    def admin_box_type_add():
+        if request.method == 'POST':
+            bt = BoxType(
+                category_id=int(request.form.get('category_id')),
+                name=request.form.get('name', '').strip(),
+                alias=request.form.get('alias', ''),
+                description=request.form.get('description', ''),
+                min_quantity=int(request.form.get('min_quantity', 100)),
+                sort_order=int(request.form.get('sort_order', 0)),
+            )
+            db.session.add(bt)
+            db.session.commit()
+            flash('盒型已添加', 'success')
+            return redirect(url_for('admin_box_types'))
+        categories = ProductCategory.query.order_by(ProductCategory.sort_order).all()
+        return render_template('admin/box_type_form.html', bt=None, categories=categories)
+
+    @app.route('/admin/box-type/<int:btid>/edit', methods=['GET', 'POST'])
+    @login_required
+    def admin_box_type_edit(btid):
+        bt = BoxType.query.get_or_404(btid)
+        if request.method == 'POST':
+            bt.category_id = int(request.form.get('category_id'))
+            bt.name = request.form.get('name', '').strip()
+            bt.alias = request.form.get('alias', '')
+            bt.description = request.form.get('description', '')
+            bt.min_quantity = int(request.form.get('min_quantity', 100))
+            bt.sort_order = int(request.form.get('sort_order', 0))
+            db.session.commit()
+            flash('盒型已更新', 'success')
+            return redirect(url_for('admin_box_types'))
+        categories = ProductCategory.query.order_by(ProductCategory.sort_order).all()
+        return render_template('admin/box_type_form.html', bt=bt, categories=categories)
+
+    @app.route('/admin/box-type/<int:btid>/toggle', methods=['POST'])
+    @login_required
+    def admin_box_type_toggle(btid):
+        bt = BoxType.query.get_or_404(btid)
+        bt.is_active = not bt.is_active
+        db.session.commit()
+        return jsonify({'ok': True, 'is_active': bt.is_active})
+
+    @app.route('/admin/box-type/<int:btid>/delete', methods=['POST'])
+    @login_required
+    def admin_box_type_delete(btid):
+        bt = BoxType.query.get_or_404(btid)
+        db.session.delete(bt)
+        db.session.commit()
+        flash('盒型已删除', 'success')
+        return redirect(url_for('admin_box_types'))
+
+    # ── 留言管理 ──
+
     @app.route('/admin/messages')
     @login_required
     def admin_messages():
-        messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
-        return render_template('admin/messages.html', messages=messages)
+        page = request.args.get('page', 1, type=int)
+        is_read = request.args.get('read', '')
+        query = ContactMessage.query
+        if is_read == '0':
+            query = query.filter_by(is_read=False)
+        elif is_read == '1':
+            query = query.filter_by(is_read=True)
+        pagination = query.order_by(ContactMessage.created_at.desc()).paginate(
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+        return render_template('admin/messages.html', pagination=pagination, current_read=is_read)
 
     @app.route('/admin/message/<int:mid>/read', methods=['POST'])
     @login_required
-    def admin_mark_read(mid):
+    def admin_message_read(mid):
         msg = ContactMessage.query.get_or_404(mid)
         msg.is_read = True
         db.session.commit()
-        return jsonify({'success': True})
+        return jsonify({'ok': True})
 
     @app.route('/admin/message/<int:mid>/delete', methods=['POST'])
     @login_required
-    def admin_delete_message(mid):
+    def admin_message_delete(mid):
         msg = ContactMessage.query.get_or_404(mid)
         db.session.delete(msg)
         db.session.commit()
-        return jsonify({'success': True})
+        return jsonify({'ok': True})
 
-    # --- 用户管理 ---
-    def super_admin_required(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            if session.get('admin_role') != 'super_admin':
-                flash('仅超级管理员可执行此操作')
-                return redirect(url_for('admin_dashboard'))
-            return f(*args, **kwargs)
-        return decorated
+    # ── 用户管理（前台用户）──
+
+    @app.route('/admin/front-users')
+    @login_required
+    def admin_front_users():
+        page = request.args.get('page', 1, type=int)
+        pagination = FrontUser.query.order_by(FrontUser.created_at.desc()).paginate(
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+        return render_template('admin/front_users.html', pagination=pagination)
+
+    # ── 后台用户管理 ──
 
     @app.route('/admin/users')
     @login_required
     def admin_users():
-        users = User.query.order_by(User.created_at).all()
+        users = AdminUser.query.order_by(AdminUser.created_at.desc()).all()
         return render_template('admin/users.html', users=users)
 
     @app.route('/admin/user/add', methods=['POST'])
-    @login_required
     @super_admin_required
-    def admin_add_user():
+    def admin_user_add():
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+        password = request.form.get('password', '').strip()
         real_name = request.form.get('real_name', '').strip()
         role = request.form.get('role', 'staff')
 
         if not username or not password:
-            return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
-        if len(password) < 4:
-            return jsonify({'success': False, 'message': '密码至少4位'}), 400
-        if User.query.filter_by(username=username).first():
-            return jsonify({'success': False, 'message': '用户名已存在'}), 400
+            return jsonify({'ok': False, 'msg': '用户名和密码不能为空'})
+        if AdminUser.query.filter_by(username=username).first():
+            return jsonify({'ok': False, 'msg': '用户名已存在'})
 
-        user = User(username=username, real_name=real_name, role=role)
+        user = AdminUser(username=username, real_name=real_name, role=role)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        return jsonify({'success': True, 'message': f'用户 {username} 创建成功'})
+        return jsonify({'ok': True, 'msg': '用户已创建', 'user': user.to_dict()})
 
     @app.route('/admin/user/<int:uid>/toggle', methods=['POST'])
-    @login_required
     @super_admin_required
-    def admin_toggle_user(uid):
-        if uid == session.get('admin_uid'):
-            return jsonify({'success': False, 'message': '不能禁用自己的账号'}), 400
-        user = User.query.get_or_404(uid)
-        if user.role == 'super_admin':
-            return jsonify({'success': False, 'message': '不能禁用超级管理员'}), 400
+    def admin_user_toggle(uid):
+        user = AdminUser.query.get_or_404(uid)
+        if user.id == session.get('admin_uid'):
+            return jsonify({'ok': False, 'msg': '不能禁用自己'})
         user.is_active = not user.is_active
         db.session.commit()
-        return jsonify({'success': True, 'is_active': user.is_active})
+        return jsonify({'ok': True, 'is_active': user.is_active})
 
     @app.route('/admin/user/<int:uid>/reset-password', methods=['POST'])
-    @login_required
     @super_admin_required
-    def admin_reset_password(uid):
-        new_pwd = request.form.get('new_password', '').strip()
-        if len(new_pwd) < 4:
-            return jsonify({'success': False, 'message': '新密码至少4位'}), 400
-        user = User.query.get_or_404(uid)
-        user.set_password(new_pwd)
+    def admin_user_reset_password(uid):
+        user = AdminUser.query.get_or_404(uid)
+        new_password = request.form.get('new_password', '').strip()
+        if not new_password or len(new_password) < 6:
+            return jsonify({'ok': False, 'msg': '密码至少6位'})
+        user.set_password(new_password)
         db.session.commit()
-        return jsonify({'success': True, 'message': f'用户 {user.username} 密码已重置'})
+        return jsonify({'ok': True, 'msg': '密码已重置'})
 
     @app.route('/admin/user/<int:uid>/delete', methods=['POST'])
-    @login_required
     @super_admin_required
-    def admin_delete_user(uid):
-        if uid == session.get('admin_uid'):
-            return jsonify({'success': False, 'message': '不能删除自己的账号'}), 400
-        user = User.query.get_or_404(uid)
-        if user.role == 'super_admin':
-            return jsonify({'success': False, 'message': '不能删除超级管理员'}), 400
+    def admin_user_delete(uid):
+        user = AdminUser.query.get_or_404(uid)
+        if user.id == session.get('admin_uid'):
+            return jsonify({'ok': False, 'msg': '不能删除自己'})
         db.session.delete(user)
         db.session.commit()
-        return jsonify({'success': True, 'message': f'用户 {user.username} 已删除'})
+        return jsonify({'ok': True, 'msg': '用户已删除'})
 
-    # --- 统计图表数据 ---
-    @app.route('/admin/api/stats')
+    # ── 轮播图管理 ──
+
+    @app.route('/admin/banners')
     @login_required
-    def admin_stats_api():
-        """返回仪表盘需要的统计数据"""
-        from sqlalchemy import func
-        # 近7天询价趋势
-        from datetime import timedelta
-        trend = []
-        for i in range(6, -1, -1):
-            day = (datetime.now() - timedelta(days=i)).strftime('%m-%d')
-            count = Inquiry.query.filter(
-                func.date(Inquiry.created_at) == (datetime.now().date() - timedelta(days=i))
-            ).count()
-            trend.append({'date': day, 'count': count})
+    def admin_banners():
+        banners = Banner.query.order_by(Banner.sort_order).all()
+        return render_template('admin/banners.html', banners=banners)
 
-        # 产品类型分布
-        type_dist = db.session.query(
-            Inquiry.product_type, func.count(Inquiry.id)
-        ).group_by(Inquiry.product_type).all()
-
-        return jsonify({
-            'trend': trend,
-            'type_dist': [{'name': t, 'count': c} for t, c in type_dist],
-        })
-
-    return app
-
-
-def _init_default_data():
-    """初始化默认产品数据和默认管理员"""
-    # 初始化默认超级管理员
-    if User.query.filter_by(role='super_admin').count() == 0:
-        admin = User(username='admin', real_name='超级管理员', role='super_admin')
-        admin.set_password('admin888')
-        db.session.add(admin)
+    @app.route('/admin/banner/add', methods=['POST'])
+    @login_required
+    def admin_banner_add():
+        banner = Banner(
+            title=request.form.get('title', ''),
+            link=request.form.get('link', ''),
+            description=request.form.get('description', ''),
+            sort_order=int(request.form.get('sort_order', 0)),
+        )
+        if 'image' in request.files:
+            f = request.files['image']
+            if f and f.filename and allowed_file(f.filename, Config.ALLOWED_IMAGE_EXTENSIONS):
+                ext = f.filename.rsplit('.', 1)[1].lower()
+                fname = f'{uuid.uuid4().hex}.{ext}'
+                f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
+                banner.image = f'/static/uploads/{fname}'
+        db.session.add(banner)
         db.session.commit()
-        print('✅ 默认管理员已创建 (admin / admin888)')
+        flash('轮播图已添加', 'success')
+        return redirect(url_for('admin_banners'))
 
-    # 初始化默认产品数据
-    if Product.query.count() == 0:
-        defaults = [
-            ('名片印刷', '名片', '高品质名片，多种材质工艺可选，支持UV、烫金、击凸等特殊工艺', 50, '盒', 1),
-            ('画册印刷', '画册', '企业画册、产品手册、宣传册，从设计到印刷一站式服务', 200, '本', 2),
-            ('彩页传单', '彩页', 'A4/A5彩页、折页、传单，色彩鲜艳，印刷精美', 80, '张', 3),
-            ('海报印刷', '海报', '大型海报、展会海报、宣传海报，支持各种尺寸', 100, '张', 4),
-            ('手提袋定制', '手提袋', '纸质手提袋、无纺布袋，提升品牌形象', 300, '个', 5),
-            ('纸盒包装', '纸盒', '产品包装盒、礼品盒、月饼盒等定制包装', 500, '个', 6),
-            ('不干胶标签', '不干胶', '各种材质不干胶标签，食品标签、物流标签等', 60, '张', 7),
-            ('吊牌卡片', '吊牌', '服装吊牌、贺卡、邀请函等精品印刷', 80, '张', 8),
-        ]
-        for name, cat, desc, price, unit, sort in defaults:
-            db.session.add(Product(
-                name=name, category=cat, description=desc,
-                min_price=price, unit=unit, sort_order=sort
-            ))
+    @app.route('/admin/banner/<int:bid>/edit', methods=['POST'])
+    @login_required
+    def admin_banner_edit(bid):
+        banner = Banner.query.get_or_404(bid)
+        banner.title = request.form.get('title', '')
+        banner.link = request.form.get('link', '')
+        banner.description = request.form.get('description', '')
+        banner.sort_order = int(request.form.get('sort_order', 0))
+        if 'image' in request.files:
+            f = request.files['image']
+            if f and f.filename and allowed_file(f.filename, Config.ALLOWED_IMAGE_EXTENSIONS):
+                ext = f.filename.rsplit('.', 1)[1].lower()
+                fname = f'{uuid.uuid4().hex}.{ext}'
+                f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
+                banner.image = f'/static/uploads/{fname}'
         db.session.commit()
-        print('✅ 默认产品数据已初始化')
+        flash('轮播图已更新', 'success')
+        return redirect(url_for('admin_banners'))
+
+    @app.route('/admin/banner/<int:bid>/toggle', methods=['POST'])
+    @login_required
+    def admin_banner_toggle(bid):
+        banner = Banner.query.get_or_404(bid)
+        banner.is_active = not banner.is_active
+        db.session.commit()
+        return jsonify({'ok': True, 'is_active': banner.is_active})
+
+    @app.route('/admin/banner/<int:bid>/delete', methods=['POST'])
+    @login_required
+    def admin_banner_delete(bid):
+        banner = Banner.query.get_or_404(bid)
+        db.session.delete(banner)
+        db.session.commit()
+        flash('轮播图已删除', 'success')
+        return redirect(url_for('admin_banners'))
+
+    # ── 分类管理 ──
+
+    @app.route('/admin/categories')
+    @login_required
+    def admin_categories():
+        categories = ProductCategory.query.order_by(ProductCategory.sort_order).all()
+        return render_template('admin/categories.html', categories=categories)
+
+    @app.route('/admin/category/add', methods=['POST'])
+    @login_required
+    def admin_category_add():
+        cat = ProductCategory(
+            name=request.form.get('name', '').strip(),
+            icon=request.form.get('icon', ''),
+            description=request.form.get('description', ''),
+            sort_order=int(request.form.get('sort_order', 0)),
+        )
+        db.session.add(cat)
+        db.session.commit()
+        flash('分类已添加', 'success')
+        return redirect(url_for('admin_categories'))
+
+    @app.route('/admin/category/<int:cid>/edit', methods=['POST'])
+    @login_required
+    def admin_category_edit(cid):
+        cat = ProductCategory.query.get_or_404(cid)
+        cat.name = request.form.get('name', '').strip()
+        cat.icon = request.form.get('icon', '')
+        cat.description = request.form.get('description', '')
+        cat.sort_order = int(request.form.get('sort_order', 0))
+        db.session.commit()
+        flash('分类已更新', 'success')
+        return redirect(url_for('admin_categories'))
+
+    @app.route('/admin/category/<int:cid>/delete', methods=['POST'])
+    @login_required
+    def admin_category_delete(cid):
+        cat = ProductCategory.query.get_or_404(cid)
+        db.session.delete(cat)
+        db.session.commit()
+        flash('分类已删除', 'success')
+        return redirect(url_for('admin_categories'))
+
+    # ── 文章管理 ──
+
+    @app.route('/admin/articles')
+    @login_required
+    def admin_articles():
+        page = request.args.get('page', 1, type=int)
+        category = request.args.get('category', '')
+        query = Article.query
+        if category:
+            query = query.filter_by(category=category)
+        pagination = query.order_by(Article.created_at.desc()).paginate(
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+        cats = db.session.query(Article.category).distinct().all()
+        categories = [c[0] for c in cats if c[0]]
+        return render_template('admin/articles.html',
+                               pagination=pagination,
+                               categories=categories,
+                               current_category=category)
+
+    @app.route('/admin/article/add', methods=['GET', 'POST'])
+    @login_required
+    def admin_article_add():
+        if request.method == 'POST':
+            article = Article(
+                title=request.form.get('title', '').strip(),
+                category=request.form.get('category', ''),
+                summary=request.form.get('summary', ''),
+                content=request.form.get('content', ''),
+                is_active='is_active' in request.form,
+                sort_order=int(request.form.get('sort_order', 0)),
+            )
+            db.session.add(article)
+            db.session.commit()
+            flash('文章已发布', 'success')
+            return redirect(url_for('admin_articles'))
+        return render_template('admin/article_form.html', article=None)
+
+    @app.route('/admin/article/<int:aid>/edit', methods=['GET', 'POST'])
+    @login_required
+    def admin_article_edit(aid):
+        article = Article.query.get_or_404(aid)
+        if request.method == 'POST':
+            article.title = request.form.get('title', '').strip()
+            article.category = request.form.get('category', '')
+            article.summary = request.form.get('summary', '')
+            article.content = request.form.get('content', '')
+            article.is_active = 'is_active' in request.form
+            article.sort_order = int(request.form.get('sort_order', 0))
+            db.session.commit()
+            flash('文章已更新', 'success')
+            return redirect(url_for('admin_articles'))
+        return render_template('admin/article_form.html', article=article)
+
+    @app.route('/admin/article/<int:aid>/delete', methods=['POST'])
+    @login_required
+    def admin_article_delete(aid):
+        article = Article.query.get_or_404(aid)
+        db.session.delete(article)
+        db.session.commit()
+        flash('文章已删除', 'success')
+        return redirect(url_for('admin_articles'))
+
+    # ── 网站配置管理 ──
+
+    @app.route('/admin/site-config', methods=['GET', 'POST'])
+    @super_admin_required
+    def admin_site_config():
+        if request.method == 'POST':
+            config_keys = [
+                'site_name', 'site_phone', 'site_phone_check', 'site_phone_complaint',
+                'site_wechat', 'site_email', 'site_address', 'site_icp',
+                'site_qq1', 'site_qq2',
+                'stat_experience', 'stat_clients', 'stat_projects', 'stat_satisfaction',
+            ]
+            for key in config_keys:
+                value = request.form.get(key, '')
+                cfg = SiteConfig.query.filter_by(key=key).first()
+                if cfg:
+                    cfg.value = value
+                else:
+                    db.session.add(SiteConfig(key=key, value=value))
+            db.session.commit()
+            flash('网站配置已保存', 'success')
+            return redirect(url_for('admin_site_config'))
+
+        configs = {c.key: c.value for c in SiteConfig.query.all()}
+        return render_template('admin/site_config.html', configs=configs)
+
+    # ── 优惠券管理 ──
+
+    @app.route('/admin/coupons')
+    @login_required
+    def admin_coupons():
+        coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
+        return render_template('admin/coupons.html', coupons=coupons)
+
+    @app.route('/admin/coupon/add', methods=['POST'])
+    @login_required
+    def admin_coupon_add():
+        from datetime import datetime as dt
+        valid_until_str = request.form.get('valid_until', '')
+        valid_until = dt.strptime(valid_until_str, '%Y-%m-%d') if valid_until_str else None
+
+        coupon = Coupon(
+            code=request.form.get('code', '').strip().upper(),
+            name=request.form.get('name', ''),
+            discount_type=request.form.get('discount_type', 'fixed'),
+            discount_value=float(request.form.get('discount_value', 0)),
+            min_order=float(request.form.get('min_order', 0)),
+            total_count=int(request.form.get('total_count', 0)),
+            valid_until=valid_until,
+        )
+        db.session.add(coupon)
+        db.session.commit()
+        flash('优惠券已添加', 'success')
+        return redirect(url_for('admin_coupons'))
+
+    @app.route('/admin/coupon/<int:cid>/toggle', methods=['POST'])
+    @login_required
+    def admin_coupon_toggle(cid):
+        coupon = Coupon.query.get_or_404(cid)
+        coupon.is_active = not coupon.is_active
+        db.session.commit()
+        return jsonify({'ok': True, 'is_active': coupon.is_active})
+
+    @app.route('/admin/coupon/<int:cid>/delete', methods=['POST'])
+    @login_required
+    def admin_coupon_delete(cid):
+        coupon = Coupon.query.get_or_404(cid)
+        db.session.delete(coupon)
+        db.session.commit()
+        flash('优惠券已删除', 'success')
+        return redirect(url_for('admin_coupons'))
+
+    # ── 订单管理 ──
+
+    @app.route('/admin/orders')
+    @login_required
+    def admin_orders():
+        status = request.args.get('status', '')
+        page = request.args.get('page', 1, type=int)
+        query = Order.query
+        if status:
+            query = query.filter_by(status=status)
+        pagination = query.order_by(Order.created_at.desc()).paginate(
+            page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+        return render_template('admin/orders.html',
+                               pagination=pagination, current_status=status)
+
+    @app.route('/admin/order/<int:oid>', methods=['GET', 'POST'])
+    @login_required
+    def admin_order_detail(oid):
+        order = Order.query.get_or_404(oid)
+        if request.method == 'POST':
+            order.status = request.form.get('status', order.status)
+            order.tracking_no = request.form.get('tracking_no', '')
+            order.remark = request.form.get('remark', '')
+            db.session.commit()
+            flash('订单已更新', 'success')
+        return render_template('admin/order_detail.html', order=order)
 
 
-def _get_site_config():
-    """获取网站配置"""
-    configs = SiteConfig.query.all()
-    cfg = {}
-    for c in configs:
-        cfg[c.key] = c.value
-    return cfg
-
+# ============================================================
+# 入口
+# ============================================================
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    init_default_data(app)
+    app.run(debug=False, host='0.0.0.0', port=5000)

@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ '编辑产品' if product else '添加产品' }} - 管理后台</title>
+    <title>{{ '编辑文章' if article else '写文章' }} - 管理后台</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
         .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #1e2a3a; color: #fff; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s; }
-        .sidebar-brand { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 17px; font-weight: 700; color: #E84B36; letter-spacing: 1px; }
+        .sidebar-brand { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 17px; font-weight: 700; color: #E84B36; }
         .sidebar-brand span { color: #fff; font-weight: 400; font-size: 13px; display: block; margin-top: 2px; }
         .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
         .nav-item a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; transition: all 0.2s; }
@@ -26,10 +26,9 @@
         .flash-msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
         .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-        .flash-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
         .back-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #666; text-decoration: none; margin-bottom: 16px; }
         .back-btn:hover { color: #E84B36; }
-        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); max-width: 800px; }
+        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); max-width: 900px; }
         .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; }
         .card-body { padding: 24px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -38,21 +37,15 @@
         .form-group label .req { color: #E84B36; }
         .form-control { width: 100%; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; outline: none; transition: border-color 0.2s; }
         .form-control:focus { border-color: #E84B36; }
-        textarea.form-control { resize: vertical; min-height: 100px; }
+        textarea.form-control { resize: vertical; }
+        select.form-control { cursor: pointer; }
         .check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
         .check-label input { width: 16px; height: 16px; cursor: pointer; accent-color: #E84B36; }
-        /* Image upload */
-        .upload-area { border: 2px dashed #e0e0e0; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
-        .upload-area:hover { border-color: #E84B36; }
-        .upload-area input[type=file] { display: none; }
-        .img-preview { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin: 0 auto 8px; display: block; }
-        .upload-hint { font-size: 13px; color: #aaa; }
         .btn { display: inline-flex; align-items: center; gap: 4px; padding: 9px 20px; border-radius: 6px; font-size: 14px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background: #E84B36; color: #fff; }
         .btn-primary:hover { background: #c0392b; }
         .btn-outline { background: #fff; color: #555; border: 1px solid #ddd; }
         .btn-outline:hover { border-color: #E84B36; color: #E84B36; }
-        .divider { height: 1px; background: #f0f0f0; margin: 20px 0; }
         .sidebar-toggle { display: none; background: none; border: none; cursor: pointer; font-size: 22px; color: #333; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
         @media (max-width: 768px) {
@@ -72,12 +65,12 @@
     <nav class="sidebar-nav">
         <div class="nav-item"><a href="{{ url_for('admin_dashboard') }}"><span class="icon">📊</span>仪表盘</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_inquiries') }}"><span class="icon">📋</span>询价管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_products') }}" class="active"><span class="icon">📦</span>现货产品</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_products') }}"><span class="icon">📦</span>现货产品</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_box_types') }}"><span class="icon">🗂️</span>盒型管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_categories') }}"><span class="icon">🏷️</span>分类管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_messages') }}"><span class="icon">💬</span>留言管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_banners') }}"><span class="icon">🖼️</span>轮播图</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_articles') }}"><span class="icon">📰</span>文章管理</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_articles') }}" class="active"><span class="icon">📰</span>文章管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_coupons') }}"><span class="icon">🎟️</span>优惠券</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
@@ -91,7 +84,7 @@
     <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
             <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <span class="topbar-title">{{ '编辑产品' if product else '添加产品' }}</span>
+            <span class="topbar-title">{{ '编辑文章' if article else '写文章' }}</span>
         </div>
         <div class="topbar-user">
             <span>{{ session.get('admin_user','') }}</span>
@@ -103,80 +96,49 @@
         {% if messages %}<div class="flash-wrap">{% for cat,msg in messages %}<div class="flash-msg flash-{{ cat if cat in ['success','error','info'] else 'info' }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
         {% endwith %}
 
-        <a href="{{ url_for('admin_products') }}" class="back-btn">← 返回产品列表</a>
+        <a href="{{ url_for('admin_articles') }}" class="back-btn">← 返回文章列表</a>
 
         <div class="card">
-            <div class="card-header">{{ '编辑产品' if product else '添加产品' }}</div>
+            <div class="card-header">{{ '编辑文章' if article else '写文章' }}</div>
             <div class="card-body">
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST">
+                    <div class="form-group">
+                        <label>文章标题 <span class="req">*</span></label>
+                        <input type="text" name="title" class="form-control" required placeholder="输入文章标题" value="{{ article.title if article else '' }}">
+                    </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>产品名称 <span class="req">*</span></label>
-                            <input type="text" name="name" class="form-control" required placeholder="输入产品名称" value="{{ product.name if product else '' }}">
+                            <label>分类 <span class="req">*</span></label>
+                            <select name="category" class="form-control" required>
+                                <option value="">-- 选择分类 --</option>
+                                <option value="印前规范" {{ 'selected' if article and article.category == '印前规范' }}>印前规范</option>
+                                <option value="新手指南" {{ 'selected' if article and article.category == '新手指南' }}>新手指南</option>
+                                <option value="常见问题" {{ 'selected' if article and article.category == '常见问题' }}>常见问题</option>
+                                <option value="活动资讯" {{ 'selected' if article and article.category == '活动资讯' }}>活动资讯</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>分类</label>
-                            <input type="text" name="category" class="form-control" placeholder="如：纸箱、礼品盒" value="{{ product.category if product else '' }}">
+                            <label>排序</label>
+                            <input type="number" name="sort_order" class="form-control" value="{{ article.sort_order if article else '0' }}">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>产品描述</label>
-                        <textarea name="description" class="form-control" placeholder="产品描述信息...">{{ product.description if product else '' }}</textarea>
+                        <label>摘要</label>
+                        <textarea name="summary" class="form-control" rows="3" placeholder="文章摘要，用于列表展示...">{{ article.summary if article else '' }}</textarea>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>销售价格（元） <span class="req">*</span></label>
-                            <input type="number" step="0.01" name="price" class="form-control" required placeholder="0.00" value="{{ product.price if product else '' }}">
-                        </div>
-                        <div class="form-group">
-                            <label>原价（元）</label>
-                            <input type="number" step="0.01" name="original_price" class="form-control" placeholder="0.00" value="{{ product.original_price if product else '' }}">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>单位</label>
-                            <input type="text" name="unit" class="form-control" placeholder="如：个、套、件" value="{{ product.unit if product else '个' }}">
-                        </div>
-                        <div class="form-group">
-                            <label>最小起订量</label>
-                            <input type="number" name="min_order" class="form-control" placeholder="1" value="{{ product.min_order if product else '1' }}">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>销量（展示用）</label>
-                            <input type="number" name="sales_count" class="form-control" placeholder="0" value="{{ product.sales_count if product else '0' }}">
-                        </div>
-                        <div class="form-group">
-                            <label>排序（越小越前）</label>
-                            <input type="number" name="sort_order" class="form-control" placeholder="0" value="{{ product.sort_order if product else '0' }}">
-                        </div>
+                    <div class="form-group">
+                        <label>正文内容 <span class="req">*</span></label>
+                        <textarea name="content" class="form-control" rows="18" required placeholder="输入文章内容，支持HTML...">{{ article.content if article else '' }}</textarea>
                     </div>
                     <div class="form-group">
                         <label class="check-label">
-                            <input type="checkbox" name="is_hot" value="1" {{ 'checked' if product and product.is_hot }}>
-                            标记为热卖产品
+                            <input type="checkbox" name="is_active" value="1" {{ 'checked' if not article or article.is_active }}>
+                            立即发布（不勾选则保存为草稿）
                         </label>
                     </div>
-                    <div class="divider"></div>
-                    <div class="form-group">
-                        <label>产品图片</label>
-                        <div class="upload-area" onclick="document.getElementById('imgInput').click()">
-                            <input type="file" id="imgInput" name="image" accept="image/*" onchange="previewImg(this)">
-                            {% if product and product.image %}
-                            <img id="imgPreview" src="{{ product.image }}" class="img-preview" alt="">
-                            {% else %}
-                            <img id="imgPreview" style="display:none;" class="img-preview" alt="">
-                            {% endif %}
-                            <div class="upload-hint" id="uploadHint" style="{{ 'display:none' if product and product.image else '' }}">
-                                点击上传图片<br>支持 JPG、PNG、WEBP，建议尺寸 800×800
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:10px;margin-top:8px;">
-                        <button type="submit" class="btn btn-primary">💾 保存产品</button>
-                        <a href="{{ url_for('admin_products') }}" class="btn btn-outline">取消</a>
+                    <div style="display:flex;gap:10px;">
+                        <button type="submit" class="btn btn-primary">💾 保存文章</button>
+                        <a href="{{ url_for('admin_articles') }}" class="btn btn-outline">取消</a>
                     </div>
                 </form>
             </div>
@@ -186,18 +148,6 @@
 <script>
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');}
-function previewImg(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            const preview = document.getElementById('imgPreview');
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            document.getElementById('uploadHint').style.display = 'none';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
 </script>
 </body>
 </html>

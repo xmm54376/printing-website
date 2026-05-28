@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}通用现货 - {{ cfg.site_name }}{% endblock %}
+{% block desc %}{{ cfg.site_name }}通用现货，常备库存，快速发货，白卡盒、手提袋等多种规格现货供应{% endblock %}
+
+{% block extra_head %}
+<style>
+.products-page { background: #f7f8fa; min-height: 60vh; }
+.page-hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E84B36 100%);
+  color: #fff; padding: 48px 0 32px;
+}
+.page-hero-inner { display: flex; align-items: center; gap: 16px; }
+.page-hero h1 { font-size: 2rem; font-weight: 700; margin: 0 0 8px; }
+.page-hero .breadcrumb { font-size: .9rem; opacity: .8; }
+.page-hero .breadcrumb a { color: rgba(255,255,255,.7); text-decoration: none; }
+.page-hero .breadcrumb a:hover { color: #fff; }
+.page-hero .breadcrumb span { margin: 0 6px; }
+.products-body { display: flex; gap: 24px; padding: 32px 0 48px; }
+.products-sidebar {
+  width: 200px; flex-shrink: 0;
+  background: #fff; border-radius: 12px; padding: 20px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); height: fit-content; position: sticky; top: 80px;
+}
+.sidebar-title { font-size: .75rem; color: #999; text-transform: uppercase; letter-spacing: .08em; padding: 0 20px 10px; }
+.sidebar-cat {
+  display: block; padding: 10px 20px; color: #444; text-decoration: none;
+  font-size: .95rem; transition: all .2s; border-left: 3px solid transparent;
+}
+.sidebar-cat:hover { background: #fef2f0; color: #E84B36; }
+.sidebar-cat.active { background: #fef2f0; color: #E84B36; border-left-color: #E84B36; font-weight: 600; }
+.products-main { flex: 1; min-width: 0; }
+.products-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: 12px; padding: 16px 20px;
+  margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); gap: 12px;
+}
+.search-box { display: flex; gap: 8px; flex: 1; max-width: 320px; }
+.search-box input {
+  flex: 1; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 8px 14px;
+  font-size: .9rem; outline: none; transition: border-color .2s;
+}
+.search-box input:focus { border-color: #E84B36; }
+.search-box button {
+  background: #E84B36; color: #fff; border: none; border-radius: 8px;
+  padding: 8px 16px; cursor: pointer; font-size: .9rem; transition: background .2s;
+}
+.search-box button:hover { background: #c73e2c; }
+.result-count { color: #888; font-size: .9rem; }
+.products-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;
+  margin-bottom: 28px;
+}
+.product-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); transition: transform .2s, box-shadow .2s;
+  text-decoration: none; color: inherit; display: block; position: relative;
+}
+.product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.product-img {
+  width: 100%; aspect-ratio: 1; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
+}
+.product-img img { width: 100%; height: 100%; object-fit: cover; }
+.product-img-placeholder { font-size: 3rem; }
+.product-badge {
+  position: absolute; top: 8px; right: 8px;
+  background: #E84B36; color: #fff; font-size: .72rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 4px;
+}
+.product-body { padding: 14px; }
+.product-name { font-size: .95rem; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.product-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.product-price { font-size: 1.15rem; font-weight: 700; color: #E84B36; }
+.product-original { font-size: .82rem; color: #aaa; text-decoration: line-through; }
+.product-meta { font-size: .8rem; color: #999; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.pagination a, .pagination span {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 8px; font-size: .9rem;
+  text-decoration: none; color: #444; border: 1.5px solid #e5e7eb; transition: all .2s;
+}
+.pagination a:hover { background: #fef2f0; border-color: #E84B36; color: #E84B36; }
+.pagination .current { background: #E84B36; border-color: #E84B36; color: #fff; font-weight: 600; }
+.pagination .disabled { opacity: .4; pointer-events: none; }
+.empty-state { text-align: center; padding: 60px 20px; color: #888; }
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="products-page">
+  <!-- 页头 -->
+  <div class="page-hero">
+    <div class="container">
+      <div class="page-hero-inner">
+        <div>
+          <div class="breadcrumb">
+            <a href="/">首页</a><span>›</span>
+            <span>通用现货</span>
+            {% if current_category %}<span>›</span><span>{{ current_category }}</span>{% endif %}
+          </div>
+          <h1>通用现货</h1>
+          <p style="opacity:.75;margin:0;font-size:.95rem;">常备库存，快速发货，无需等待</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="products-body">
+      <!-- 左侧分类 -->
+      <aside class="products-sidebar">
+        <div class="sidebar-title">商品分类</div>
+        <a href="/products" class="sidebar-cat {% if not current_category %}active{% endif %}">全部商品</a>
+        {% for cat in categories %}
+        <a href="/products?category={{ cat }}"
+           class="sidebar-cat {% if current_category == cat %}active{% endif %}">{{ cat }}</a>
+        {% endfor %}
+      </aside>
+
+      <!-- 右侧主内容 -->
+      <div class="products-main">
+        <!-- 工具栏 -->
+        <div class="products-toolbar">
+          <form class="search-box" method="get" action="/products">
+            {% if current_category %}
+            <input type="hidden" name="category" value="{{ current_category }}">
+            {% endif %}
+            <input type="text" name="keyword" value="{{ keyword or '' }}" placeholder="搜索商品名称…">
+            <button type="submit">搜索</button>
+          </form>
+          <span class="result-count">
+            共 <strong>{{ pagination.total if pagination else products|length }}</strong> 件商品
+          </span>
+        </div>
+
+        <!-- 商品网格 -->
+        {% if products %}
+        <div class="products-grid">
+          {% for p in products %}
+          <a href="/product/{{ p.id }}" class="product-card animate-in" style="animation-delay:{{ loop.index0 * 0.05 }}s">
+            <div class="product-img">
+              {% if p.image %}
+              <img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">
+              {% else %}
+              <div class="product-img-placeholder">📦</div>
+              {% endif %}
+              {% if p.is_hot %}<span class="product-badge">HOT</span>{% endif %}
+            </div>
+            <div class="product-body">
+              <div class="product-name">{{ p.name }}</div>
+              <div class="product-price-row">
+                <span class="product-price">¥{{ '%.2f'|format(p.price) }}</span>
+                {% if p.original_price %}
+                <span class="product-original">¥{{ '%.2f'|format(p.original_price) }}</span>
+                {% endif %}
+              </div>
+              <div class="product-meta">已售 {{ p.sales_count }}+</div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination">
+          {% if pagination.has_prev %}
+          <a href="?page={{ pagination.prev_num }}{% if current_category %}&category={{ current_category }}{% endif %}{% if keyword %}&keyword={{ keyword }}{% endif %}">&lsaquo;</a>
+          {% else %}
+          <span class="disabled">&lsaquo;</span>
+          {% endif %}
+
+          {% for p in pagination.iter_pages() %}
+            {% if p %}
+            <a href="?page={{ p }}{% if current_category %}&category={{ current_category }}{% endif %}{% if keyword %}&keyword={{ keyword }}{% endif %}"
+               class="{% if p == pagination.page %}current{% endif %}">{{ p }}</a>
+            {% else %}
+            <span>…</span>
+            {% endif %}
+          {% endfor %}
+
+          {% if pagination.has_next %}
+          <a href="?page={{ pagination.next_num }}{% if current_category %}&category={{ current_category }}{% endif %}{% if keyword %}&keyword={{ keyword }}{% endif %}">&rsaquo;</a>
+          {% else %}
+          <span class="disabled">&rsaquo;</span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <p>暂无匹配商品，换个关键词试试？</p>
+          <a href="/products" class="btn btn-outline" style="margin-top:16px">查看全部</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
