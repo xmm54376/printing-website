@@ -22,7 +22,7 @@ from config import Config
 from models import (
     db, AdminUser, FrontUser, Banner, SiteConfig, Article, Coupon,
     ProductCategory, BoxType, QuotationRule, StockProduct,
-    Inquiry, Order, ContactMessage, init_default_data
+    Inquiry, Order, ContactMessage, FAQ, init_default_data
 )
 
 
@@ -98,6 +98,19 @@ def get_site_config():
         'site_email': SiteConfig.get('site_email', Config.SITE_EMAIL),
         'site_address': SiteConfig.get('site_address', Config.SITE_ADDRESS),
         'site_icp': SiteConfig.get('site_icp', Config.SITE_ICP),
+        'site_qq1': SiteConfig.get('site_qq1', ''),
+        'site_qq2': SiteConfig.get('site_qq2', ''),
+        'site_qq3': SiteConfig.get('site_qq3', ''),
+        'site_logo': SiteConfig.get('site_logo', ''),
+        'site_favicon': SiteConfig.get('site_favicon', ''),
+        'site_qrcode_wechat': SiteConfig.get('site_qrcode_wechat', ''),
+        'site_about_image1': SiteConfig.get('site_about_image1', ''),
+        'site_about_image2': SiteConfig.get('site_about_image2', ''),
+        'seo_title': SiteConfig.get('seo_title', ''),
+        'seo_description': SiteConfig.get('seo_description', ''),
+        'seo_keywords': SiteConfig.get('seo_keywords', ''),
+        'business_hours': SiteConfig.get('business_hours', '周一至周六 8:30-18:00'),
+        'site_description': SiteConfig.get('site_description', ''),
     }
 
 
@@ -224,6 +237,59 @@ def _register_frontend_routes(app):
                                coupons=valid_coupons,
                                articles=articles,
                                cfg=cfg)
+
+    @app.route('/faq')
+    def faq():
+        category = request.args.get('category', '')
+        query = FAQ.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        faqs = query.order_by(FAQ.sort_order).all()
+        # 所有分类
+        cats = db.session.query(FAQ.category).filter_by(is_active=True).distinct().all()
+        categories = [c[0] for c in cats if c[0]]
+        cfg = get_site_config()
+        return render_template('faq.html', faqs=faqs, categories=categories,
+                               current_category=category, cfg=cfg)
+
+    @app.route('/inquiry-query')
+    def inquiry_query():
+        """前台询价进度查询（无需登录）"""
+        cfg = get_site_config()
+        return render_template('inquiry_query.html', cfg=cfg)
+
+    @app.route('/api/inquiry-query', methods=['POST'])
+    def api_inquiry_query():
+        """根据手机号+询价ID查询询价进度"""
+        data = request.get_json() or {}
+        inquiry_id = data.get('inquiry_id', '').strip()
+        phone = data.get('phone', '').strip()
+
+        if not inquiry_id or not phone:
+            return jsonify({'ok': False, 'msg': '请填写询价单号和手机号'})
+
+        try:
+            iid = int(inquiry_id)
+        except ValueError:
+            return jsonify({'ok': False, 'msg': '询价单号格式不正确'})
+
+        inquiry = Inquiry.query.filter_by(id=iid, phone=phone).first()
+        if not inquiry:
+            return jsonify({'ok': False, 'msg': '未找到匹配的询价记录，请检查单号和手机号'})
+
+        return jsonify({
+            'ok': True,
+            'inquiry': {
+                'id': inquiry.id,
+                'status': inquiry.status,
+                'product_type': inquiry.product_type,
+                'quantity': inquiry.quantity,
+                'created_at': inquiry.created_at.strftime('%Y-%m-%d %H:%M') if inquiry.created_at else '',
+                'quote_price': inquiry.quote_price,
+                'quote_remark': inquiry.quote_remark,
+                'updated_at': inquiry.updated_at.strftime('%Y-%m-%d %H:%M') if inquiry.updated_at else '',
+            }
+        })
 
     @app.route('/login', methods=['GET', 'POST'])
     def user_login():
@@ -592,6 +658,7 @@ def _register_admin_routes(app):
 
     # ── 仪表盘 ──
 
+    @app.route('/admin/')
     @app.route('/admin')
     @app.route('/admin/dashboard')
     @login_required
@@ -1141,11 +1208,14 @@ def _register_admin_routes(app):
     @super_admin_required
     def admin_site_config():
         if request.method == 'POST':
+            # 文本配置项
             config_keys = [
                 'site_name', 'site_phone', 'site_phone_check', 'site_phone_complaint',
                 'site_wechat', 'site_email', 'site_address', 'site_icp',
-                'site_qq1', 'site_qq2',
+                'site_qq1', 'site_qq2', 'site_qq3',
                 'stat_experience', 'stat_clients', 'stat_projects', 'stat_satisfaction',
+                'seo_title', 'seo_description', 'seo_keywords',
+                'business_hours', 'site_description',
             ]
             for key in config_keys:
                 value = request.form.get(key, '')
@@ -1154,6 +1224,22 @@ def _register_admin_routes(app):
                     cfg.value = value
                 else:
                     db.session.add(SiteConfig(key=key, value=value))
+
+            # 图片上传（Logo）
+            for img_key in ['site_logo', 'site_favicon', 'site_qrcode_wechat', 'site_about_image1', 'site_about_image2']:
+                if img_key in request.files:
+                    f = request.files[img_key]
+                    if f and f.filename and allowed_file(f.filename, Config.ALLOWED_IMAGE_EXTENSIONS):
+                        ext = f.filename.rsplit('.', 1)[1].lower()
+                        fname = f'{img_key}_{uuid.uuid4().hex}.{ext}'
+                        f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
+                        img_path = f'/static/uploads/{fname}'
+                        cfg = SiteConfig.query.filter_by(key=img_key).first()
+                        if cfg:
+                            cfg.value = img_path
+                        else:
+                            db.session.add(SiteConfig(key=img_key, value=img_path))
+
             db.session.commit()
             flash('网站配置已保存', 'success')
             return redirect(url_for('admin_site_config'))
@@ -1233,6 +1319,58 @@ def _register_admin_routes(app):
             db.session.commit()
             flash('订单已更新', 'success')
         return render_template('admin/order_detail.html', order=order)
+
+    # ── FAQ管理 ──
+
+    @app.route('/admin/faqs')
+    @login_required
+    def admin_faqs():
+        faqs = FAQ.query.order_by(FAQ.sort_order).all()
+        return render_template('admin/faqs.html', faqs=faqs)
+
+    @app.route('/admin/faq/add', methods=['POST'])
+    @login_required
+    def admin_faq_add():
+        faq = FAQ(
+            question=request.form.get('question', '').strip(),
+            answer=request.form.get('answer', '').strip(),
+            category=request.form.get('category', '常见问题'),
+            sort_order=int(request.form.get('sort_order', 0)),
+            is_active=True,
+        )
+        db.session.add(faq)
+        db.session.commit()
+        flash('FAQ已添加', 'success')
+        return redirect(url_for('admin_faqs'))
+
+    @app.route('/admin/faq/<int:fid>/edit', methods=['POST'])
+    @login_required
+    def admin_faq_edit(fid):
+        faq = FAQ.query.get_or_404(fid)
+        faq.question = request.form.get('question', '').strip()
+        faq.answer = request.form.get('answer', '').strip()
+        faq.category = request.form.get('category', '常见问题')
+        faq.sort_order = int(request.form.get('sort_order', 0))
+        db.session.commit()
+        flash('FAQ已更新', 'success')
+        return redirect(url_for('admin_faqs'))
+
+    @app.route('/admin/faq/<int:fid>/toggle', methods=['POST'])
+    @login_required
+    def admin_faq_toggle(fid):
+        faq = FAQ.query.get_or_404(fid)
+        faq.is_active = not faq.is_active
+        db.session.commit()
+        return jsonify({'ok': True, 'is_active': faq.is_active})
+
+    @app.route('/admin/faq/<int:fid>/delete', methods=['POST'])
+    @login_required
+    def admin_faq_delete(fid):
+        faq = FAQ.query.get_or_404(fid)
+        db.session.delete(faq)
+        db.session.commit()
+        flash('FAQ已删除', 'success')
+        return redirect(url_for('admin_faqs'))
 
 
 # ============================================================

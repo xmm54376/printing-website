@@ -291,7 +291,7 @@ section { padding: 72px 0; }
 /* ============================================================
    浮动客服
    ============================================================ */
-.float-service { position: fixed; right: 20px; bottom: 80px; z-index: 900; display: flex; flex-direction: column; gap: 10px; }
+.float-service { position: fixed; right: 20px; bottom: 100px; z-index: 899; display: flex; flex-direction: column; gap: 10px; }
 .float-item { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-lg); transition: var(--transition); position: relative; }
 .float-item:hover { transform: scale(1.1); background: var(--primary-dark); }
 .float-wechat { background: #07c160; }

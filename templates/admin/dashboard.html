@@ -293,14 +293,14 @@
                         <tbody>
                             {% for inq in recent_inquiries %}
                             <tr>
-                                <td><a href="{{ url_for('admin_inquiry_detail', id=inq.id) }}" style="color:#E84B36;text-decoration:none;">#{{ inq.id }}</a></td>
+                                <td><a href="{{ url_for('admin_inquiry_detail', iid=inq.id) }}" style="color:#E84B36;text-decoration:none;">#{{ inq.id }}</a></td>
                                 <td>{{ inq.name }}</td>
                                 <td>{{ inq.product_type }}</td>
                                 <td>
-                                    {% if inq.status == 'pending' %}<span class="badge badge-pending">待处理</span>
-                                    {% elif inq.status == 'quoted' %}<span class="badge badge-quoted">已报价</span>
-                                    {% elif inq.status == 'completed' %}<span class="badge badge-completed">已成交</span>
-                                    {% else %}<span class="badge badge-closed">已关闭</span>{% endif %}
+                                    {% if inq.status == '待处理' %}<span class="badge badge-pending">待处理</span>
+                                    {% elif inq.status == '已报价' %}<span class="badge badge-quoted">已报价</span>
+                                    {% elif inq.status == '已成交' %}<span class="badge badge-completed">已成交</span>
+                                    {% else %}<span class="badge badge-closed">{{ inq.status or '已关闭' }}</span>{% endif %}
                                 </td>
                                 <td>{{ inq.created_at.strftime('%m-%d %H:%M') if inq.created_at else '' }}</td>
                             </tr>
@@ -360,14 +360,15 @@ function closeSidebar() {
 fetch('/admin/api/stats')
     .then(r => r.json())
     .then(data => {
+        const trendData = data.trend || [];
         const ctx = document.getElementById('inquiryChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.labels || [],
+                labels: trendData.map(d => d.date),
                 datasets: [{
                     label: '询价数量',
-                    data: data.values || [],
+                    data: trendData.map(d => d.count),
                     borderColor: '#E84B36',
                     backgroundColor: 'rgba(232,75,54,0.08)',
                     borderWidth: 2,

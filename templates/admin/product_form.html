@@ -82,6 +82,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>

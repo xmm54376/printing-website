@@ -84,6 +84,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}" class="active"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -174,15 +175,15 @@
                         <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录' }}</td>
                         <td>
                             {% if session.get('admin_role') == 'super_admin' and user.username != session.get('admin_user') %}
-                            <form method="POST" action="{{ url_for('admin_user_toggle', id=user.id) }}" style="display:inline;">
+                            <form method="POST" action="{{ url_for('admin_user_toggle', uid=user.id) }}" style="display:inline;">
                                 <button type="submit" class="btn btn-sm {{ 'btn-warning' if user.is_active else 'btn-outline' }}">
                                     {{ '禁用' if user.is_active else '启用' }}
                                 </button>
                             </form>
-                            <form method="POST" action="{{ url_for('admin_user_reset_password', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认重置密码?')">
+                            <form method="POST" action="{{ url_for('admin_user_reset_password', uid=user.id) }}" style="display:inline;" onsubmit="return confirm('确认重置密码?')">
                                 <button type="submit" class="btn btn-sm btn-outline">重置密码</button>
                             </form>
-                            <form method="POST" action="{{ url_for('admin_user_delete', id=user.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该用户?')">
+                            <form method="POST" action="{{ url_for('admin_user_delete', uid=user.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该用户?')">
                                 <button type="submit" class="btn btn-sm btn-danger">删除</button>
                             </form>
                             {% else %}

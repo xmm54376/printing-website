@@ -83,6 +83,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -119,10 +120,10 @@
                             <div class="info-item">
                                 <label>当前状态</label>
                                 <div class="val">
-                                    {% if inquiry.status == 'pending' %}<span class="badge badge-pending">待处理</span>
-                                    {% elif inquiry.status == 'quoted' %}<span class="badge badge-quoted">已报价</span>
-                                    {% elif inquiry.status == 'completed' %}<span class="badge badge-completed">已成交</span>
-                                    {% else %}<span class="badge badge-closed">已关闭</span>{% endif %}
+                                    {% if inquiry.status == '待处理' %}<span class="badge badge-pending">待处理</span>
+                                    {% elif inquiry.status == '已报价' %}<span class="badge badge-quoted">已报价</span>
+                                    {% elif inquiry.status == '已成交' %}<span class="badge badge-completed">已成交</span>
+                                    {% else %}<span class="badge badge-closed">{{ inquiry.status or '已关闭' }}</span>{% endif %}
                                 </div>
                             </div>
                             <div class="info-item">
@@ -153,10 +154,15 @@
                                 <label>数量</label>
                                 <div class="val">{{ inquiry.quantity }}</div>
                             </div>
-                            {% if inquiry.size %}
+                            {% if inquiry.length and inquiry.width and inquiry.height %}
+                            <div class="info-item">
+                                <label>尺寸（长×宽×高）</label>
+                                <div class="val">{{ inquiry.length }} × {{ inquiry.width }} × {{ inquiry.height }} cm</div>
+                            </div>
+                            {% elif inquiry.length %}
                             <div class="info-item">
                                 <label>尺寸</label>
-                                <div class="val">{{ inquiry.size }}</div>
+                                <div class="val">{{ inquiry.length }} cm</div>
                             </div>
                             {% endif %}
                             {% if inquiry.material %}
@@ -165,10 +171,10 @@
                                 <div class="val">{{ inquiry.material }}</div>
                             </div>
                             {% endif %}
-                            {% if inquiry.color %}
+                            {% if inquiry.craft %}
                             <div class="info-item">
-                                <label>颜色</label>
-                                <div class="val">{{ inquiry.color }}</div>
+                                <label>工艺要求</label>
+                                <div class="val">{{ inquiry.craft }}</div>
                             </div>
                             {% endif %}
                             <div class="info-item">
@@ -202,14 +208,14 @@
                 <div class="card">
                     <div class="card-header">更新状态</div>
                     <div class="card-body">
-                        <form method="POST" action="{{ url_for('admin_inquiry_detail', id=inquiry.id) }}">
+                        <form method="POST" action="{{ url_for('admin_inquiry_detail', iid=inquiry.id) }}">
                             <div class="form-group">
                                 <label>状态</label>
                                 <select name="status" class="form-control">
-                                    <option value="pending" {{ 'selected' if inquiry.status == 'pending' }}>待处理</option>
-                                    <option value="quoted" {{ 'selected' if inquiry.status == 'quoted' }}>已报价</option>
-                                    <option value="completed" {{ 'selected' if inquiry.status == 'completed' }}>已成交</option>
-                                    <option value="closed" {{ 'selected' if inquiry.status == 'closed' }}>已关闭</option>
+                                    <option value="待处理" {{ 'selected' if inquiry.status == '待处理' }}>待处理</option>
+                                    <option value="已报价" {{ 'selected' if inquiry.status == '已报价' }}>已报价</option>
+                                    <option value="已成交" {{ 'selected' if inquiry.status == '已成交' }}>已成交</option>
+                                    <option value="已关闭" {{ 'selected' if inquiry.status == '已关闭' }}>已关闭</option>
                                 </select>
                             </div>
                             <div class="form-group">

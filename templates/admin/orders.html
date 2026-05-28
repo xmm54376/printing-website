@@ -81,6 +81,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}" class="active"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -104,11 +105,11 @@
 
         <div class="status-tabs">
             <a href="{{ url_for('admin_orders') }}" class="{{ 'active' if not current_status else '' }}">全部</a>
-            <a href="{{ url_for('admin_orders', status='pending') }}" class="{{ 'active' if current_status == 'pending' else '' }}">待处理</a>
-            <a href="{{ url_for('admin_orders', status='processing') }}" class="{{ 'active' if current_status == 'processing' else '' }}">生产中</a>
-            <a href="{{ url_for('admin_orders', status='shipped') }}" class="{{ 'active' if current_status == 'shipped' else '' }}">已发货</a>
-            <a href="{{ url_for('admin_orders', status='completed') }}" class="{{ 'active' if current_status == 'completed' else '' }}">已完成</a>
-            <a href="{{ url_for('admin_orders', status='cancelled') }}" class="{{ 'active' if current_status == 'cancelled' else '' }}">已取消</a>
+            <a href="{{ url_for('admin_orders', status='待确认') }}" class="{{ 'active' if current_status == '待确认' else '' }}">待确认</a>
+            <a href="{{ url_for('admin_orders', status='生产中') }}" class="{{ 'active' if current_status == '生产中' else '' }}">生产中</a>
+            <a href="{{ url_for('admin_orders', status='已发货') }}" class="{{ 'active' if current_status == '已发货' else '' }}">已发货</a>
+            <a href="{{ url_for('admin_orders', status='已完成') }}" class="{{ 'active' if current_status == '已完成' else '' }}">已完成</a>
+            <a href="{{ url_for('admin_orders', status='已取消') }}" class="{{ 'active' if current_status == '已取消' else '' }}">已取消</a>
         </div>
 
         <div class="card">
@@ -131,21 +132,21 @@
                         <td><span class="order-no">{{ order.order_no }}</span></td>
                         <td>{{ order.name or order.user.username if order.user else '-' }}</td>
                         <td>{{ order.phone or '-' }}</td>
-                        <td style="color:#E84B36;font-weight:600;">¥{{ order.total_amount }}</td>
+                        <td style="color:#E84B36;font-weight:600;">¥{{ order.total or 0 }}</td>
                         <td>
-                            {% if order.status == 'pending' %}<span class="badge badge-pending">待处理</span>
-                            {% elif order.status == 'processing' %}<span class="badge badge-processing">生产中</span>
-                            {% elif order.status == 'shipped' %}<span class="badge badge-shipped">已发货</span>
-                            {% elif order.status == 'completed' %}<span class="badge badge-completed">已完成</span>
-                            {% else %}<span class="badge badge-cancelled">已取消</span>{% endif %}
+                            {% if order.status == '待确认' %}<span class="badge badge-pending">待确认</span>
+                            {% elif order.status == '生产中' %}<span class="badge badge-processing">生产中</span>
+                            {% elif order.status == '已发货' %}<span class="badge badge-shipped">已发货</span>
+                            {% elif order.status == '已完成' %}<span class="badge badge-completed">已完成</span>
+                            {% else %}<span class="badge badge-cancelled">{{ order.status or '已取消' }}</span>{% endif %}
                         </td>
                         <td>
-                            {% if order.payment_status == 'paid' %}<span class="badge badge-paid">已付款</span>
-                            {% else %}<span class="badge badge-unpaid">未付款</span>{% endif %}
+                            {% if order.payment_status == '已支付' %}<span class="badge badge-paid">已付款</span>
+                            {% else %}<span class="badge badge-unpaid">{{ order.payment_status or '未支付' }}</span>{% endif %}
                         </td>
                         <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '' }}</td>
                         <td>
-                            <a href="{{ url_for('admin_order_detail', id=order.id) }}" class="btn btn-outline">查看</a>
+                            <a href="{{ url_for('admin_order_detail', oid=order.id) }}" class="btn btn-outline">查看</a>
                         </td>
                     </tr>
                     {% else %}

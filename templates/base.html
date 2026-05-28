@@ -28,6 +28,7 @@
       <a href="/guide" class="nav-link {% if request.endpoint in ['guide','guide_detail'] %}active{% endif %}">印刷指南</a>
       <a href="/activity" class="nav-link {% if request.endpoint == 'activity' %}active{% endif %}">活动中心 <span class="nav-badge new">NEW</span></a>
       <a href="/about" class="nav-link {% if request.endpoint == 'about' %}active{% endif %}">关于我们</a>
+      <a href="/faq" class="nav-link {% if request.endpoint == 'faq' %}active{% endif %}">常见问题</a>
       <a href="/contact" class="nav-link {% if request.endpoint == 'contact' %}active{% endif %}">联系我们</a>
     </nav>
 
@@ -66,6 +67,8 @@
     <a href="/guide">印刷指南</a>
     <a href="/activity">活动中心</a>
     <a href="/about">关于我们</a>
+    <a href="/faq">常见问题</a>
+    <a href="/inquiry-query">询价查询</a>
     <a href="/contact">联系我们</a>
     {% if session.user_id %}
     <a href="/user">个人中心</a>
@@ -128,6 +131,9 @@
   </div>
 </footer>
 
+<!-- 页面加载进度条 -->
+<div id="pageLoader" style="position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;background:var(--primary);transition:width .3s;width:0;"></div>
+
 <!-- ===== 右侧浮动客服 ===== -->
 <div class="float-service" id="floatService">
   <div class="float-item float-wechat">
@@ -149,7 +155,137 @@
   </button>
 </div>
 
+<!-- ===== 在线客服聊天窗口 ===== -->
+<div class="chat-widget" id="chatWidget">
+  <button class="chat-toggle" id="chatToggle" onclick="toggleChat()">
+    <svg width="26" height="26" fill="#fff" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+    <span class="chat-badge" id="chatBadge">1</span>
+  </button>
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">印</div>
+        <div>
+          <div class="chat-name">{{ cfg.site_name }}客服</div>
+          <div class="chat-status">在线</div>
+        </div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()">&times;</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="chat-msg bot">
+        <div class="chat-bubble">您好！欢迎来到{{ cfg.site_name }}，请问有什么可以帮您？</div>
+      </div>
+      <div class="chat-msg bot">
+        <div class="chat-bubble">
+          您可以直接输入问题，或者点击下方快捷回复：
+          <div class="chat-quick-replies">
+            <button onclick="sendQuickReply('请问最低起订量是多少？')">最低起订量</button>
+            <button onclick="sendQuickReply('从下单到收货要多久？')">交货周期</button>
+            <button onclick="sendQuickReply('可以免费打样吗？')">免费打样</button>
+            <button onclick="sendQuickReply('怎么联系客服？')">联系客服</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chatInput" placeholder="输入您的问题..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" onclick="sendChat()">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.chat-widget { position: fixed; right: 20px; bottom: 24px; z-index: 900; }
+.chat-toggle { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #E84B36, #ff6b54); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(232,75,54,.4); transition: all .3s; position: relative; }
+.chat-toggle:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(232,75,54,.5); }
+.chat-badge { position: absolute; top: -2px; right: -2px; width: 18px; height: 18px; background: #ef4444; color: #fff; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+.chat-badge:empty { display: none; }
+.chat-window { position: absolute; bottom: 70px; right: 0; width: 360px; max-height: 480px; background: #fff; border-radius: 16px; box-shadow: 0 8px 40px rgba(0,0,0,.15); display: none; flex-direction: column; overflow: hidden; animation: chatSlide .25s ease; }
+.chat-window.open { display: flex; }
+@keyframes chatSlide { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+.chat-header { background: linear-gradient(135deg, #E84B36, #ff6b54); color: #fff; padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+.chat-header-info { display: flex; align-items: center; gap: 12px; }
+.chat-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
+.chat-name { font-size: 15px; font-weight: 700; }
+.chat-status { font-size: 12px; opacity: .85; display: flex; align-items: center; gap: 4px; }
+.chat-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+.chat-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; opacity: .8; }
+.chat-close:hover { opacity: 1; }
+.chat-body { flex: 1; overflow-y: auto; padding: 16px; min-height: 260px; max-height: 320px; }
+.chat-msg { margin-bottom: 12px; display: flex; }
+.chat-msg.bot { justify-content: flex-start; }
+.chat-msg.user { justify-content: flex-end; }
+.chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+.chat-msg.bot .chat-bubble { background: #f3f4f6; color: #333; border-bottom-left-radius: 4px; }
+.chat-msg.user .chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.chat-quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chat-quick-replies button { padding: 5px 12px; border: 1px solid var(--border); border-radius: 16px; font-size: 12px; background: #fff; color: var(--text-base); cursor: pointer; transition: all .2s; }
+.chat-quick-replies button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.chat-input-wrap { display: flex; align-items: center; border-top: 1px solid #f0f0f0; padding: 12px; gap: 8px; }
+.chat-input-wrap input { flex: 1; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 20px; font-size: 14px; outline: none; transition: border-color .2s; }
+.chat-input-wrap input:focus { border-color: var(--primary); }
+.chat-send { width: 38px; height: 38px; border-radius: 50%; background: var(--primary); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; flex-shrink: 0; }
+.chat-send:hover { background: var(--primary-dark); }
+.chat-time { text-align: center; font-size: 11px; color: #aaa; margin: 8px 0; }
+@media (max-width: 640px) {
+  .chat-window { width: calc(100vw - 40px); right: -8px; }
+}
+</style>
+
 <script src="/static/js/main.js"></script>
+<script>
+// 页面加载进度条
+(function(){
+  var loader = document.getElementById('pageLoader');
+  if(loader){ loader.style.width='60%'; window.addEventListener('load',function(){ loader.style.width='100%'; setTimeout(function(){ loader.style.opacity='0'; setTimeout(function(){ loader.remove(); },300); },200); }); }
+})();
+
+// 在线客服
+var chatAutoReplies = {
+  '起订': '我们大部分产品最低起订量为100个，瓦楞盒和精品礼盒最低50个起，不干胶标签500个起。具体可在在线报价页面查看每种盒型的最低起印量。',
+  '交货': '标准交货周期为7-10个工作日（不含物流），加急可72小时出样。大批量或复杂工艺订单可能需要额外时间，以客服确认为准。',
+  '打样': '新客户首次下单可享受免费打样！打样一般72小时内完成，确认样品后再生产大货。往返快递费需自理。',
+  '联系': '您可以通过以下方式联系我们：\n电话：{{ cfg.site_phone }}\n微信：{{ cfg.site_wechat }}\n邮箱：{{ cfg.site_email }}\n工作时间：{{ cfg.business_hours }}',
+  '价格': '您可以直接使用我们的"在线报价"功能获取参考价格，也可以联系客服获取精确报价。我们会根据您的具体需求给出最优方案。',
+  '设计': '我们提供专业包装设计服务，支持AI/PDF/CDR格式文件，300dpi以上，CMYK色彩模式，需预留3mm出血位。新客户首次下单可享受免费设计调整。',
+};
+function toggleChat() {
+  var w = document.getElementById('chatWindow');
+  w.classList.toggle('open');
+  var badge = document.getElementById('chatBadge');
+  if(badge) badge.textContent = '';
+}
+function sendChat() {
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if(!msg) return;
+  appendMsg(msg, 'user');
+  input.value = '';
+  // 模拟自动回复
+  setTimeout(function(){
+    var reply = '感谢您的咨询！您的问题已收到，我们的客服会在工作时间内尽快回复您。如需紧急咨询，请拨打热线：{{ cfg.site_phone }}';
+    for(var key in chatAutoReplies) {
+      if(msg.indexOf(key) !== -1) { reply = chatAutoReplies[key]; break; }
+    }
+    appendMsg(reply, 'bot');
+  }, 600);
+}
+function sendQuickReply(text) {
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+function appendMsg(text, type) {
+  var body = document.getElementById('chatBody');
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + type;
+  div.innerHTML = '<div class="chat-bubble">' + text.replace(/\n/g, '<br>') + '</div>';
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

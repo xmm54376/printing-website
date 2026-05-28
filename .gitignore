@@ -6,8 +6,10 @@ __pycache__/
 venv/
 .venv/
 static/uploads/
+instance/
 *.egg-info/
 dist/
 build/
 *.log
 debug.log
+nul

@@ -78,6 +78,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -139,8 +140,8 @@
                         </td>
                         <td>{{ bt.sort_order or 0 }}</td>
                         <td>
-                            <a href="{{ url_for('admin_box_type_edit', id=bt.id) }}" class="btn btn-sm btn-outline">编辑</a>
-                            <a href="{{ url_for('admin_box_type_delete', id=bt.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除?')">删除</a>
+                            <a href="{{ url_for('admin_box_type_edit', btid=bt.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                            <a href="{{ url_for('admin_box_type_delete', btid=bt.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除?')">删除</a>
                         </td>
                     </tr>
                     {% else %}

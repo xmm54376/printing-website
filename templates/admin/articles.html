@@ -80,6 +80,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -130,7 +131,7 @@
                     {% for article in pagination.items %}
                     <tr>
                         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                            <a href="{{ url_for('admin_article_edit', id=article.id) }}" style="color:#333;text-decoration:none;font-weight:500;">{{ article.title }}</a>
+                            <a href="{{ url_for('admin_article_edit', aid=article.id) }}" style="color:#333;text-decoration:none;font-weight:500;">{{ article.title }}</a>
                         </td>
                         <td>{{ article.category }}</td>
                         <td>
@@ -143,8 +144,8 @@
                         <td>{{ article.view_count or 0 }}</td>
                         <td>{{ article.created_at.strftime('%Y-%m-%d') if article.created_at else '' }}</td>
                         <td>
-                            <a href="{{ url_for('admin_article_edit', id=article.id) }}" class="btn btn-sm btn-outline">编辑</a>
-                            <a href="{{ url_for('admin_article_delete', id=article.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除该文章?')">删除</a>
+                            <a href="{{ url_for('admin_article_edit', aid=article.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                            <a href="{{ url_for('admin_article_delete', aid=article.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除该文章?')">删除</a>
                         </td>
                     </tr>
                     {% else %}

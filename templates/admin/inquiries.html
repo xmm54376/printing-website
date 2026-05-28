@@ -89,6 +89,7 @@
         <div class="nav-item"><a href="{{ url_for('admin_orders') }}"><span class="icon">🛒</span>订单管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_users') }}"><span class="icon">👤</span>后台用户</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_front_users') }}"><span class="icon">👥</span>前台用户</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_faqs') }}"><span class="icon">❓</span>FAQ管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_site_config') }}"><span class="icon">⚙️</span>网站配置</a></div>
     </nav>
     <div class="sidebar-footer">{{ session.get('admin_user','') }} &nbsp;|&nbsp; <a href="{{ url_for('admin_logout') }}">退出</a></div>
@@ -112,10 +113,10 @@
 
         <div class="status-tabs">
             <a href="{{ url_for('admin_inquiries') }}" class="{{ 'active' if current_status == '' else '' }}">全部</a>
-            <a href="{{ url_for('admin_inquiries', status='pending') }}" class="{{ 'active' if current_status == 'pending' else '' }}">待处理</a>
-            <a href="{{ url_for('admin_inquiries', status='quoted') }}" class="{{ 'active' if current_status == 'quoted' else '' }}">已报价</a>
-            <a href="{{ url_for('admin_inquiries', status='completed') }}" class="{{ 'active' if current_status == 'completed' else '' }}">已成交</a>
-            <a href="{{ url_for('admin_inquiries', status='closed') }}" class="{{ 'active' if current_status == 'closed' else '' }}">已关闭</a>
+            <a href="{{ url_for('admin_inquiries', status='待处理') }}" class="{{ 'active' if current_status == '待处理' else '' }}">待处理</a>
+            <a href="{{ url_for('admin_inquiries', status='已报价') }}" class="{{ 'active' if current_status == '已报价' else '' }}">已报价</a>
+            <a href="{{ url_for('admin_inquiries', status='已成交') }}" class="{{ 'active' if current_status == '已成交' else '' }}">已成交</a>
+            <a href="{{ url_for('admin_inquiries', status='已关闭') }}" class="{{ 'active' if current_status == '已关闭' else '' }}">已关闭</a>
         </div>
 
         <div class="card">
@@ -145,15 +146,15 @@
                         <td>{{ inq.product_type }}</td>
                         <td>{{ inq.quantity }}</td>
                         <td>
-                            {% if inq.status == 'pending' %}<span class="badge badge-pending">待处理</span>
-                            {% elif inq.status == 'quoted' %}<span class="badge badge-quoted">已报价</span>
-                            {% elif inq.status == 'completed' %}<span class="badge badge-completed">已成交</span>
-                            {% else %}<span class="badge badge-closed">已关闭</span>{% endif %}
+                            {% if inq.status == '待处理' %}<span class="badge badge-pending">待处理</span>
+                            {% elif inq.status == '已报价' %}<span class="badge badge-quoted">已报价</span>
+                            {% elif inq.status == '已成交' %}<span class="badge badge-completed">已成交</span>
+                            {% else %}<span class="badge badge-closed">{{ inq.status or '已关闭' }}</span>{% endif %}
                         </td>
                         <td>{{ inq.created_at.strftime('%Y-%m-%d %H:%M') if inq.created_at else '' }}</td>
                         <td>
-                            <a href="{{ url_for('admin_inquiry_detail', id=inq.id) }}" class="btn btn-outline">查看</a>
-                            <a href="{{ url_for('admin_inquiry_delete', id=inq.id) }}" class="btn btn-danger" onclick="return confirm('确认删除?')">删除</a>
+                            <a href="{{ url_for('admin_inquiry_detail', iid=inq.id) }}" class="btn btn-outline">查看</a>
+                            <a href="{{ url_for('admin_inquiry_delete', iid=inq.id) }}" class="btn btn-danger" onclick="return confirm('确认删除?')">删除</a>
                         </td>
                     </tr>
                     {% else %}

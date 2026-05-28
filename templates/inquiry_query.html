@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}询价查询 - {{ cfg.site_name }}{% endblock %}
+{% block extra_head %}
+<style>
+.query-page { padding-top: calc(var(--header-h) + 24px); padding-bottom: 60px; min-height: 80vh; }
+.query-card { max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px 40px; box-shadow: var(--shadow-lg); }
+.query-header { text-align: center; margin-bottom: 32px; }
+.query-icon { font-size: 56px; margin-bottom: 16px; }
+.query-header h1 { font-size: 26px; font-weight: 900; color: var(--secondary); margin-bottom: 8px; }
+.query-header p { font-size: 14px; color: var(--text-muted); }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-base); margin-bottom: 6px; }
+.form-group label em { color: var(--primary); font-style: normal; }
+.form-group input { width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; transition: var(--transition); }
+.form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(232,75,54,.1); }
+.query-btn { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.query-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.query-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+.query-msg { text-align: center; padding: 12px; border-radius: var(--radius-sm); font-size: 14px; margin-top: 16px; display: none; }
+.query-msg.error { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.query-msg.success { display: block; background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.result-card { display: none; margin-top: 24px; background: var(--bg-gray); border-radius: var(--radius-md); padding: 28px; border: 1px solid var(--border); }
+.result-card.show { display: block; animation: fadeUp .4s forwards; }
+.result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.result-header h3 { font-size: 18px; font-weight: 800; color: var(--secondary); }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.result-item label { display: block; font-size: 12px; color: var(--text-light); margin-bottom: 4px; }
+.result-item .val { font-size: 15px; font-weight: 600; color: var(--text-base); }
+.result-item.full { grid-column: 1 / -1; }
+.status-badge { display: inline-block; padding: 4px 14px; border-radius: 16px; font-size: 13px; font-weight: 700; }
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-quoted { background: #dbeafe; color: #1e40af; }
+.status-completed { background: #d1fae5; color: #065f46; }
+.status-closed { background: #f3f4f6; color: #6b7280; }
+.result-price { font-size: 22px; font-weight: 900; color: var(--primary); }
+.query-tips { margin-top: 20px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); font-size: 13px; color: #92400e; line-height: 1.7; }
+.query-tips strong { display: block; margin-bottom: 4px; }
+@media (max-width: 640px) {
+  .query-card { padding: 32px 20px; margin: 0 16px; }
+  .result-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="query-page">
+  <div class="container">
+    <div class="query-card">
+      <div class="query-header">
+        <div class="query-icon">🔍</div>
+        <h1>询价进度查询</h1>
+        <p>输入询价单号和手机号，随时查看您的询价处理进度</p>
+      </div>
+
+      <div class="form-group">
+        <label>询价单号 <em>*</em></label>
+        <input type="text" id="inquiryId" placeholder="请输入询价单号（如：1）" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>预留手机号 <em>*</em></label>
+        <input type="tel" id="phone" placeholder="请输入询价时填写的手机号" maxlength="11">
+      </div>
+      <button class="query-btn" id="queryBtn" onclick="doQuery()">查询询价进度</button>
+      <div class="query-msg" id="queryMsg"></div>
+
+      <div class="result-card" id="resultCard">
+        <div class="result-header">
+          <h3>询价单 #<span id="rId"></span></h3>
+          <span class="status-badge" id="rStatus"></span>
+        </div>
+        <div class="result-grid">
+          <div class="result-item">
+            <label>产品类型</label>
+            <div class="val" id="rProduct"></div>
+          </div>
+          <div class="result-item">
+            <label>需求数量</label>
+            <div class="val" id="rQty"></div>
+          </div>
+          <div class="result-item">
+            <label>提交时间</label>
+            <div class="val" id="rCreated"></div>
+          </div>
+          <div class="result-item">
+            <label>最后更新</label>
+            <div class="val" id="rUpdated"></div>
+          </div>
+          <div class="result-item" id="rPriceWrap" style="display:none;">
+            <label>报价金额</label>
+            <div class="result-price" id="rPrice"></div>
+          </div>
+          <div class="result-item full" id="rRemarkWrap" style="display:none;">
+            <label>报价备注</label>
+            <div class="val" id="rRemark" style="font-weight:400;color:var(--text-muted);line-height:1.7;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="query-tips">
+        <strong>温馨提示</strong>
+        询价单号在提交询价成功后会显示，请妥善记录。如忘记单号，可使用提交时填写的手机号登录后在"我的询价"中查看。
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function doQuery() {
+  var id = document.getElementById('inquiryId').value.trim();
+  var phone = document.getElementById('phone').value.trim();
+  var msgEl = document.getElementById('queryMsg');
+  var btn = document.getElementById('queryBtn');
+  var resultCard = document.getElementById('resultCard');
+
+  msgEl.className = 'query-msg';
+  msgEl.textContent = '';
+  resultCard.classList.remove('show');
+
+  if (!id || !phone) {
+    msgEl.className = 'query-msg error';
+    msgEl.textContent = '请填写询价单号和手机号';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '查询中...';
+
+  fetch('/api/inquiry-query', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({inquiry_id: id, phone: phone})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = '查询询价进度';
+    if (!data.ok) {
+      msgEl.className = 'query-msg error';
+      msgEl.textContent = data.msg;
+      return;
+    }
+    var inq = data.inquiry;
+    document.getElementById('rId').textContent = inq.id;
+    document.getElementById('rProduct').textContent = inq.product_type;
+    document.getElementById('rQty').textContent = inq.quantity + ' 个';
+    document.getElementById('rCreated').textContent = inq.created_at;
+    document.getElementById('rUpdated').textContent = inq.updated_at || '暂无更新';
+
+    var statusEl = document.getElementById('rStatus');
+    statusEl.textContent = inq.status;
+    statusEl.className = 'status-badge';
+    if (inq.status.indexOf('待处理') !== -1) statusEl.classList.add('status-pending');
+    else if (inq.status.indexOf('已报价') !== -1) statusEl.classList.add('status-quoted');
+    else if (inq.status.indexOf('已成交') !== -1) statusEl.classList.add('status-completed');
+    else statusEl.classList.add('status-closed');
+
+    if (inq.quote_price) {
+      document.getElementById('rPriceWrap').style.display = '';
+      document.getElementById('rPrice').textContent = '\u00A5' + inq.quote_price;
+    } else {
+      document.getElementById('rPriceWrap').style.display = 'none';
+    }
+    if (inq.quote_remark) {
+      document.getElementById('rRemarkWrap').style.display = '';
+      document.getElementById('rRemark').textContent = inq.quote_remark;
+    } else {
+      document.getElementById('rRemarkWrap').style.display = 'none';
+    }
+
+    resultCard.classList.add('show');
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.textContent = '查询询价进度';
+    msgEl.className = 'query-msg error';
+    msgEl.textContent = '网络异常，请稍后重试';
+  });
+}
+
+// Enter键提交
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (document.activeElement.id === 'inquiryId' || document.activeElement.id === 'phone')) {
+    doQuery();
+  }
+});
+</script>
+{% endblock %}

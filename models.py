@@ -448,6 +448,19 @@ class ContactMessage(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 
+class FAQ(db.Model):
+    """常见问题（FAQ）"""
+    __tablename__ = 'faqs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    question = db.Column(db.String(300), nullable=False)
+    answer = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='常见问题')
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
 # ============================================================
 # 初始化默认数据
 # ============================================================
@@ -666,6 +679,21 @@ def init_default_data(app):
                 total_count=0,
                 is_active=True,
             ))
+
+        # ── 示例FAQ ──
+        if FAQ.query.count() == 0:
+            faqs_data = [
+                ('印刷最低起订量是多少？', '我们大部分产品的最低起订量为100个，部分瓦楞盒和精品礼盒起订量为50个，不干胶标签起订量为500个。具体起订量取决于盒型和工艺复杂度，您可以在在线报价页面查看每种盒型的最低起印量。', '常见问题', 1),
+                ('从下单到收货需要多长时间？', '标准交货周期为7-10个工作日（不含物流时间）。如需加急，我们提供72小时快速出样服务。大批量或复杂工艺订单可能需要额外时间，具体以客服确认为准。', '常见问题', 2),
+                ('可以免费打样吗？', '新客户首次下单可享受免费打样服务。打样一般72小时内完成，确认样品后再进行大货生产。往返快递费需自理。', '常见问题', 3),
+                ('支持哪些付款方式？', '目前支持对公转账和微信/支付宝付款。大额订单可签订正式合同，支持30%定金+70%尾款的付款方式。', '常见问题', 4),
+                ('设计文件需要什么格式？', '推荐使用AI（Adobe Illustrator）、PDF或CDR格式，并确保转换为曲线路径。文件分辨率不低于300dpi，颜色模式使用CMYK。请务必预留3mm出血位。如需帮助，可联系我们免费提供设计模板。', '印前规范', 5),
+                ('如何计算包装盒的展开尺寸？', '展开尺寸取决于盒型和产品尺寸。我们提供在线报价工具，输入产品尺寸后可自动计算展开面积和参考价格。也可以直接联系客服，我们免费为您计算并提供设计方案。', '新手指南', 6),
+                ('可以只做设计不做印刷吗？', '可以。我们提供专业的包装设计服务，单独设计收费根据复杂度从500元起。设计满意后如在我们这里印刷，设计费可抵扣货款。', '常见问题', 7),
+                ('收货后发现质量问题怎么办？', '收到货物后请及时验收，如有质量问题请在7日内联系我们。我们承诺质量问题免费重做或全额退款，物流破损我们会协助向物流公司索赔。', '常见问题', 8),
+            ]
+            for q, a, cat, sort in faqs_data:
+                db.session.add(FAQ(question=q, answer=a, category=cat, sort_order=sort, is_active=True))
 
         db.session.commit()
         print('默认数据初始化完成')

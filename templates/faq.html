@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}常见问题 - {{ cfg.site_name }}{% endblock %}
+{% block extra_head %}
+<style>
+.faq-page { padding-top: calc(var(--header-h) + 24px); padding-bottom: 60px; min-height: 80vh; }
+.faq-header { text-align: center; margin-bottom: 40px; }
+.faq-header h1 { font-size: 36px; font-weight: 900; color: var(--secondary); margin-bottom: 12px; }
+.faq-header p { font-size: 16px; color: var(--text-muted); }
+.faq-categories { display: flex; gap: 10px; justify-content: center; margin-bottom: 36px; flex-wrap: wrap; }
+.faq-cat-btn { padding: 8px 20px; border-radius: 20px; font-size: 14px; border: 1px solid var(--border); background: #fff; color: var(--text-base); cursor: pointer; transition: var(--transition); text-decoration: none; }
+.faq-cat-btn:hover, .faq-cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.faq-search { max-width: 500px; margin: 0 auto 36px; position: relative; }
+.faq-search input { width: 100%; padding: 14px 20px 14px 48px; border: 2px solid var(--border); border-radius: 28px; font-size: 15px; transition: var(--transition); }
+.faq-search input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(232,75,54,.1); }
+.faq-search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--text-light); }
+.faq-list { max-width: 760px; margin: 0 auto; }
+.faq-item { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden; transition: var(--transition); }
+.faq-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+.faq-question { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; cursor: pointer; user-select: none; gap: 16px; }
+.faq-question h3 { font-size: 15px; font-weight: 700; color: var(--secondary); flex: 1; line-height: 1.5; }
+.faq-arrow { font-size: 18px; color: var(--text-light); transition: transform .3s; flex-shrink: 0; }
+.faq-item.open .faq-arrow { transform: rotate(180deg); color: var(--primary); }
+.faq-answer { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+.faq-answer-inner { padding: 0 24px 20px; font-size: 14px; color: var(--text-muted); line-height: 1.8; border-top: 1px solid var(--bg-gray); padding-top: 16px; margin-top: 0; }
+.faq-item.open .faq-answer { max-height: 500px; }
+.faq-empty { text-align: center; padding: 60px 20px; color: var(--text-light); }
+.faq-empty-icon { font-size: 48px; margin-bottom: 16px; }
+.faq-empty h3 { font-size: 18px; color: var(--text-muted); margin-bottom: 8px; }
+.faq-contact { text-align: center; margin-top: 48px; padding: 36px; background: linear-gradient(135deg, var(--secondary), #2d3748); border-radius: var(--radius-lg); color: #fff; max-width: 600px; margin-left: auto; margin-right: auto; }
+.faq-contact h3 { font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+.faq-contact p { font-size: 14px; opacity: .8; margin-bottom: 20px; }
+@media (max-width: 640px) {
+  .faq-header h1 { font-size: 26px; }
+  .faq-question { padding: 14px 16px; }
+  .faq-answer-inner { padding: 0 16px 16px; }
+  .faq-contact { margin: 36px 16px 0; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="faq-page">
+  <div class="container">
+    <div class="faq-header animate-in">
+      <div class="section-tag">帮助中心</div>
+      <h1>常见问题 FAQ</h1>
+      <p>在这里找到您最关心的问题解答，快速了解我们的服务</p>
+    </div>
+
+    <div class="faq-search animate-in">
+      <span class="faq-search-icon">🔍</span>
+      <input type="text" id="faqSearch" placeholder="搜索问题...">
+    </div>
+
+    {% if categories %}
+    <div class="faq-categories animate-in">
+      <a href="/faq" class="faq-cat-btn {{ 'active' if not current_category else '' }}">全部</a>
+      {% for cat in categories %}
+      <a href="/faq?category={{ cat }}" class="faq-cat-btn {{ 'active' if current_category == cat else '' }}">{{ cat }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="faq-list" id="faqList">
+      {% for faq in faqs %}
+      <div class="faq-item animate-in" data-question="{{ faq.question }}">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <h3>{{ faq.question }}</h3>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">{{ faq.answer }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="faq-empty">
+        <div class="faq-empty-icon">📭</div>
+        <h3>暂无常见问题</h3>
+        <p>敬请期待更多内容</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="faq-contact animate-in">
+      <h3>没有找到您的问题？</h3>
+      <p>直接联系我们的客服团队，我们会第一时间为您解答</p>
+      <a href="/contact" class="btn btn-primary">联系我们</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var searchInput = document.getElementById('faqSearch');
+  var faqItems = document.querySelectorAll('.faq-item');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      var keyword = this.value.trim().toLowerCase();
+      faqItems.forEach(function(item) {
+        var q = (item.getAttribute('data-question') || '').toLowerCase();
+        var a = (item.querySelector('.faq-answer-inner') || {}).textContent || '';
+        if (!keyword || q.indexOf(keyword) !== -1 || a.toLowerCase().indexOf(keyword) !== -1) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  }
+  // URL hash auto-open
+  if (location.hash) {
+    var target = document.querySelector(location.hash);
+    if (target) { target.classList.add('open'); target.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }
+})();
+</script>
+{% endblock %}
