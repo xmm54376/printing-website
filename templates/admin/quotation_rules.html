@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分类管理 - 管理后台</title>
+    <title>报价规则管理 - 管理后台</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
@@ -26,15 +26,10 @@
         .flash-msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
         .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-        .grid-2 { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
-        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; font-weight: 600; color: #1e2a3a; }
-        .card-body { padding: 20px; }
-        .form-group { margin-bottom: 14px; }
-        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
-        .form-control { width: 100%; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; outline: none; transition: border-color 0.2s; }
-        .form-control:focus { border-color: #E84B36; }
-        textarea.form-control { resize: vertical; min-height: 70px; }
+        .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .filter-tabs a { padding: 6px 14px; border-radius: 20px; font-size: 13px; text-decoration: none; color: #666; border: 1px solid #e0e0e0; background: #fff; transition: all 0.2s; }
+        .filter-tabs a:hover, .filter-tabs a.active { background: #E84B36; color: #fff; border-color: #E84B36; }
         .btn { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background: #E84B36; color: #fff; }
         .btn-primary:hover { background: #c0392b; }
@@ -43,22 +38,23 @@
         .btn-danger { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
         .btn-danger:hover { background: #ef4444; color: #fff; }
         .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         table th { background: #fafafa; padding: 10px 14px; text-align: left; color: #888; font-weight: 600; border-bottom: 1px solid #f0f0f0; }
         table td { padding: 10px 14px; border-bottom: 1px solid #f7f7f7; color: #444; vertical-align: middle; }
         table tr:last-child td { border-bottom: none; }
         table tr:hover td { background: #fafafa; }
-        .cat-icon { font-size: 22px; }
-        /* Modal */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
-        .modal-overlay.show { display: flex; }
-        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 400px; max-width: 95vw; }
-        .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
-        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: 0.3s; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #22c55e; }
+        input:checked + .slider:before { transform: translateX(18px); }
+        .range-tag { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; border-radius: 4px; padding: 2px 8px; margin: 2px; font-size: 12px; white-space: nowrap; }
+        .range-empty { color: #aaa; font-size: 12px; }
         .sidebar-toggle { display: none; background: none; border: none; cursor: pointer; font-size: 22px; color: #333; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-        @media (max-width: 900px) {
-            .grid-2 { grid-template-columns: 1fr; }
+        @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .main-wrap { margin-left: 0; }
@@ -76,8 +72,8 @@
         <div class="nav-item"><a href="{{ url_for('admin_inquiries') }}"><span class="icon">📋</span>询价管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_products') }}"><span class="icon">📦</span>现货产品</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_box_types') }}"><span class="icon">🗂️</span>盒型管理</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_quotation_rules') }}"><span class="icon">💰</span>报价规则</a></div>
-        <div class="nav-item"><a href="{{ url_for('admin_categories') }}" class="active"><span class="icon">🏷️</span>分类管理</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_quotation_rules') }}" class="active"><span class="icon">💰</span>报价规则</a></div>
+        <div class="nav-item"><a href="{{ url_for('admin_categories') }}"><span class="icon">🏷️</span>分类管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_messages') }}"><span class="icon">💬</span>留言管理</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_banners') }}"><span class="icon">🖼️</span>轮播图</a></div>
         <div class="nav-item"><a href="{{ url_for('admin_articles') }}"><span class="icon">📰</span>文章管理</a></div>
@@ -95,7 +91,7 @@
     <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
             <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <span class="topbar-title">分类管理</span>
+            <span class="topbar-title">报价规则管理</span>
         </div>
         <div class="topbar-user">
             <span>{{ session.get('admin_user','') }}</span>
@@ -107,97 +103,103 @@
         {% if messages %}<div class="flash-wrap">{% for cat,msg in messages %}<div class="flash-msg flash-{{ cat if cat in ['success','error','info'] else 'info' }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
         {% endwith %}
 
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-header">添加分类</div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('admin_category_add') }}">
-                        <div class="form-group">
-                            <label>分类名称 *</label>
-                            <input type="text" name="name" class="form-control" required placeholder="输入分类名称">
-                        </div>
-                        <div class="form-group">
-                            <label>图标（Emoji或URL）</label>
-                            <input type="text" name="icon" class="form-control" placeholder="如：📦 或图标URL">
-                        </div>
-                        <div class="form-group">
-                            <label>描述</label>
-                            <textarea name="description" class="form-control" placeholder="分类描述..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>排序（越小越前）</label>
-                            <input type="number" name="sort_order" class="form-control" value="0">
-                        </div>
-                        <button type="submit" class="btn btn-primary">添加分类</button>
-                    </form>
-                </div>
+        <div class="toolbar">
+            <div class="filter-tabs">
+                <a href="{{ url_for('admin_quotation_rules') }}" class="{{ 'active' if not current_box_type_id else '' }}">全部</a>
+                {% for bt in box_types %}
+                <a href="{{ url_for('admin_quotation_rules', box_type_id=bt.id) }}" class="{{ 'active' if current_box_type_id == bt.id else '' }}">{{ bt.name }}</a>
+                {% endfor %}
             </div>
+            <div style="margin-left:auto;">
+                <a href="{{ url_for('admin_quotation_rule_add') }}" class="btn btn-primary">+ 添加报价规则</a>
+            </div>
+        </div>
 
-            <div class="card">
-                <div class="card-header">分类列表（{{ categories|length }} 个）</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>图标</th>
-                            <th>名称</th>
-                            <th>描述</th>
-                            <th>盒型数量</th>
-                            <th>排序</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for cat in categories %}
-                        <tr>
-                            <td><span class="cat-icon">{{ cat.icon or '📦' }}</span></td>
-                            <td><strong>{{ cat.name }}</strong></td>
-                            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ cat.description or '-' }}</td>
-                            <td>{{ cat.box_types.count() if cat.box_types is defined else 0 }}</td>
-                            <td>{{ cat.sort_order or 0 }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline" onclick="openEditCat({{ cat.id }},'{{ cat.name }}','{{ cat.icon or '' }}','{{ cat.description or '' }}',{{ cat.sort_order or 0 }})">编辑</button>
-                                <a href="{{ url_for('admin_category_delete', cid=cat.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除?')">删除</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6" style="text-align:center;color:#aaa;padding:30px;">暂无分类</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>盒型</th>
+                        <th>材质</th>
+                        <th>起步价</th>
+                        <th>默认单价</th>
+                        <th>阶梯价格</th>
+                        <th>最低数量</th>
+                        <th>状态</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rule in rules %}
+                    <tr>
+                        <td>{{ rule.id }}</td>
+                        <td><strong>{{ rule.box_type.name if rule.box_type else '-' }}</strong></td>
+                        <td>{{ rule.material }}</td>
+                        <td style="color:#E84B36;font-weight:600;">¥{{ rule.base_price }}</td>
+                        <td>¥{{ rule.unit_price }}/个</td>
+                        <td>
+                            {% set ranges = [] %}
+                            {% if rule.range_config %}
+                                {% set range_list = rule.range_config | tojson %}
+                            {% endif %}
+                            {% if rule.range_config and rule.range_config != '[]' %}
+                                {% for r in (rule.range_config | safe) %}
+                                {% endfor %}
+                                <span class="range-tag" id="ranges-{{ rule.id }}">加载中...</span>
+                                <script>
+                                    (function(){
+                                        try {
+                                            var data = {{ rule.range_config | safe }};
+                                            var el = document.getElementById('ranges-{{ rule.id }}');
+                                            if (data && data.length > 0) {
+                                                el.innerHTML = data.map(function(r){
+                                                    return r.min + '~' + (r.max || '∞') + '个: ¥' + r.unit_price;
+                                                }).join('<br>');
+                                            } else {
+                                                el.innerHTML = '<span class="range-empty">无阶梯</span>';
+                                            }
+                                        } catch(e) {
+                                            document.getElementById('ranges-{{ rule.id }}').innerHTML = '<span class="range-empty">无阶梯</span>';
+                                        }
+                                    })();
+                                </script>
+                            {% else %}
+                                <span class="range-empty">无阶梯</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rule.min_quantity }}</td>
+                        <td>
+                            <label class="switch">
+                                <input type="checkbox" {{ 'checked' if rule.is_active }} onchange="toggleRule({{ rule.id }}, this)">
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                        <td>{{ rule.remark or '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('admin_quotation_rule_edit', rid=rule.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                            <form method="POST" action="{{ url_for('admin_quotation_rule_delete', rid=rule.id) }}" style="display:inline;" onsubmit="return confirm('确认删除此报价规则？')">
+                                <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10" style="text-align:center;color:#aaa;padding:30px;">暂无报价规则</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
-
-<!-- Edit Modal -->
-<div class="modal-overlay" id="editModal">
-    <div class="modal">
-        <h3>编辑分类</h3>
-        <form id="editCatForm" method="POST">
-            <div class="form-group"><label>名称 *</label><input type="text" name="name" id="catName" class="form-control" required></div>
-            <div class="form-group"><label>图标</label><input type="text" name="icon" id="catIcon" class="form-control"></div>
-            <div class="form-group"><label>描述</label><textarea name="description" id="catDesc" class="form-control"></textarea></div>
-            <div class="form-group"><label>排序</label><input type="number" name="sort_order" id="catSort" class="form-control"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('editModal').classList.remove('show')">取消</button>
-                <button type="submit" class="btn btn-primary">保存</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');}
-function openEditCat(id, name, icon, desc, sort) {
-    document.getElementById('editCatForm').action = '/admin/category/' + id + '/edit';
-    document.getElementById('catName').value = name;
-    document.getElementById('catIcon').value = icon;
-    document.getElementById('catDesc').value = desc;
-    document.getElementById('catSort').value = sort;
-    document.getElementById('editModal').classList.add('show');
+function toggleRule(id, cb) {
+    fetch('/admin/quotation-rule/' + id + '/toggle', {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(r => r.json()).then(d => { if(!d.ok) cb.checked = !cb.checked; })
+        .catch(() => cb.checked = !cb.checked);
 }
-document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('show'); }));
 </script>
 </body>
 </html>

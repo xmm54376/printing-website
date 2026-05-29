@@ -1391,6 +1391,107 @@ def _register_admin_routes(app):
             flash('订单已更新', 'success')
         return render_template('admin/order_detail.html', order=order)
 
+    # ── 报价规则管理 ──
+
+    @app.route('/admin/quotation-rules')
+    @login_required
+    def admin_quotation_rules():
+        box_type_id = request.args.get('box_type_id', 0, type=int)
+        query = QuotationRule.query
+        if box_type_id:
+            query = query.filter_by(box_type_id=box_type_id)
+        rules = query.order_by(QuotationRule.id).all()
+        box_types = BoxType.query.order_by(BoxType.sort_order).all()
+        return render_template('admin/quotation_rules.html',
+                               rules=rules,
+                               box_types=box_types,
+                               current_box_type_id=box_type_id)
+
+    @app.route('/admin/quotation-rule/add', methods=['GET', 'POST'])
+    @login_required
+    def admin_quotation_rule_add():
+        if request.method == 'POST':
+            box_type_id = int(request.form.get('box_type_id'))
+            material = request.form.get('material', '通用').strip()
+            base_price = float(request.form.get('base_price', 0))
+            unit_price = float(request.form.get('unit_price', 0))
+            min_quantity = int(request.form.get('min_quantity', 100))
+            remark = request.form.get('remark', '').strip()
+
+            # 解析阶梯价格
+            ranges = []
+            range_count = int(request.form.get('range_count', 0))
+            for i in range(range_count):
+                r_min = int(request.form.get(f'range_{i}_min', 0))
+                r_max = int(request.form.get(f'range_{i}_max', 0))
+                r_price = float(request.form.get(f'range_{i}_price', 0))
+                if r_min > 0 and r_price > 0:
+                    ranges.append({'min': r_min, 'max': r_max, 'unit_price': r_price})
+
+            rule = QuotationRule(
+                box_type_id=box_type_id,
+                material=material or '通用',
+                base_price=base_price,
+                unit_price=unit_price,
+                min_quantity=min_quantity,
+                range_config=json.dumps(ranges, ensure_ascii=False),
+                remark=remark,
+            )
+            db.session.add(rule)
+            db.session.commit()
+            flash('报价规则已添加', 'success')
+            return redirect(url_for('admin_quotation_rules'))
+
+        box_types = BoxType.query.order_by(BoxType.sort_order).all()
+        return render_template('admin/quotation_rule_form.html', rule=None, box_types=box_types)
+
+    @app.route('/admin/quotation-rule/<int:rid>/edit', methods=['GET', 'POST'])
+    @login_required
+    def admin_quotation_rule_edit(rid):
+        rule = QuotationRule.query.get_or_404(rid)
+        if request.method == 'POST':
+            rule.box_type_id = int(request.form.get('box_type_id'))
+            rule.material = request.form.get('material', '通用').strip() or '通用'
+            rule.base_price = float(request.form.get('base_price', 0))
+            rule.unit_price = float(request.form.get('unit_price', 0))
+            rule.min_quantity = int(request.form.get('min_quantity', 100))
+            rule.remark = request.form.get('remark', '').strip()
+
+            # 解析阶梯价格
+            ranges = []
+            range_count = int(request.form.get('range_count', 0))
+            for i in range(range_count):
+                r_min = int(request.form.get(f'range_{i}_min', 0))
+                r_max = int(request.form.get(f'range_{i}_max', 0))
+                r_price = float(request.form.get(f'range_{i}_price', 0))
+                if r_min > 0 and r_price > 0:
+                    ranges.append({'min': r_min, 'max': r_max, 'unit_price': r_price})
+
+            rule.range_config = json.dumps(ranges, ensure_ascii=False)
+            db.session.commit()
+            flash('报价规则已更新', 'success')
+            return redirect(url_for('admin_quotation_rules'))
+
+        box_types = BoxType.query.order_by(BoxType.sort_order).all()
+        return render_template('admin/quotation_rule_form.html', rule=rule, box_types=box_types)
+
+    @app.route('/admin/quotation-rule/<int:rid>/toggle', methods=['POST'])
+    @login_required
+    def admin_quotation_rule_toggle(rid):
+        rule = QuotationRule.query.get_or_404(rid)
+        rule.is_active = not rule.is_active
+        db.session.commit()
+        return jsonify({'ok': True, 'is_active': rule.is_active})
+
+    @app.route('/admin/quotation-rule/<int:rid>/delete', methods=['POST'])
+    @login_required
+    def admin_quotation_rule_delete(rid):
+        rule = QuotationRule.query.get_or_404(rid)
+        db.session.delete(rule)
+        db.session.commit()
+        flash('报价规则已删除', 'success')
+        return redirect(url_for('admin_quotation_rules'))
+
     # ── FAQ管理 ──
 
     @app.route('/admin/faqs')
