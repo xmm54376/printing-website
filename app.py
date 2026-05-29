@@ -1560,7 +1560,9 @@ def _register_admin_routes(app):
 # 入口
 # ============================================================
 
+# Gunicorn 入口（模块导入时创建应用实例）
+application = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
-    init_default_data(app)
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    init_default_data(application)
+    application.run(debug=False, host='0.0.0.0', port=5000)
