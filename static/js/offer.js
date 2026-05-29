@@ -182,6 +182,12 @@ function calculatePrice() {
           '<span class="price-unit">' + unitPrice + '</span>';
       }
       priceBox && priceBox.classList.add('has-price');
+
+      // 显示阶梯价格表
+      showPriceBreaks(boxId, material, qty, data.unit_price);
+
+      // 显示预计交货时间
+      showDeliveryEstimate(qty, crafts);
     } else {
       showPriceError(data.msg || '暂无报价数据，请联系客服获取');
     }
@@ -213,6 +219,11 @@ function resetPriceDisplay() {
     priceValue.innerHTML = '填写数量后自动计算报价';
   }
   if (priceBox) priceBox.classList.remove('has-price');
+  // 隐藏阶梯价格和交货预估
+  var breaksEl = document.getElementById('priceBreaks');
+  if (breaksEl) breaksEl.style.display = 'none';
+  var deliveryEl = document.getElementById('deliveryEstimate');
+  if (deliveryEl) deliveryEl.style.display = 'none';
 }
 
 function showPriceError(msg) {
@@ -342,9 +353,19 @@ function removeFile() {
     // 确保关键数据在 formData 中
     formData.set('box_type_id', currentBoxTypeId);
     formData.set('box_name', currentBoxName);
+    formData.set('product_type', currentBoxName);  // 后端 product_type 字段
     formData.set('material', getSelectedMaterial());
     formData.set('quantity', qty);
     formData.set('crafts', crafts.join(','));
+    formData.set('craft', crafts.join(','));  // 后端 craft 字段
+
+    // 新增参数
+    var printColor = document.querySelector('input[name="print_color"]:checked');
+    if (printColor) formData.set('print_color', printColor.value);
+    var paperWeight = document.querySelector('input[name="paper_weight"]:checked');
+    if (paperWeight) formData.set('paper_weight', paperWeight.value);
+    var needSample = document.getElementById('needSample');
+    if (needSample && needSample.checked) formData.set('need_sample', '1');
 
     fetch('/api/offer/submit', {
       method: 'POST',
@@ -428,7 +449,85 @@ function resetOffer() {
 }
 
 /* ===================================================
-   9. 监听输入变化，自动计算
+   9. 阶梯价格对比表
+=================================================== */
+function showPriceBreaks(boxId, material, currentQty, currentUnitPrice) {
+  var breaksEl = document.getElementById('priceBreaks');
+  var bodyEl = document.getElementById('priceBreaksBody');
+  if (!breaksEl || !bodyEl) return;
+
+  // 基于起印量生成不同数量阶梯
+  var tiers = [
+    currentMinQty,
+    currentMinQty * 2,
+    currentMinQty * 5,
+    currentMinQty * 10,
+    currentMinQty * 20
+  ];
+
+  // 去重并排序
+  tiers = tiers.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a,b){ return a-b; });
+
+  var baseUP = currentUnitPrice || 1;
+  var html = '';
+  tiers.forEach(function(tierQty) {
+    // 阶梯折扣：数量越大单价越低
+    var discount = 1;
+    if (tierQty >= currentMinQty * 20) discount = 0.65;
+    else if (tierQty >= currentMinQty * 10) discount = 0.72;
+    else if (tierQty >= currentMinQty * 5) discount = 0.80;
+    else if (tierQty >= currentMinQty * 2) discount = 0.88;
+
+    var tierUnit = baseUP * discount;
+    var tierTotal = tierUnit * tierQty;
+    var tierMin = tierTotal * 0.9;
+    var tierMax = tierTotal * 1.1;
+    var saving = ((1 - discount) * 100).toFixed(0);
+    var isCurrent = (tierQty === currentQty);
+
+    html += '<tr class="' + (isCurrent ? 'current-tier' : '') + '">' +
+      '<td>' + (tierQty >= 1000 ? (tierQty/1000) + 'k' : tierQty) + ' 个</td>' +
+      '<td>¥' + tierUnit.toFixed(2) + '/个</td>' +
+      '<td>¥' + tierMin.toFixed(0) + ' ~ ¥' + tierMax.toFixed(0) + '</td>' +
+      '<td>' + (discount < 1 ? '<span style="color:#059669;font-weight:600;">省' + saving + '%</span>' : '-') + '</td>' +
+      '</tr>';
+  });
+
+  bodyEl.innerHTML = html;
+  breaksEl.style.display = 'block';
+}
+
+/* ===================================================
+   10. 预计交货时间
+=================================================== */
+function showDeliveryEstimate(qty, crafts) {
+  var el = document.getElementById('deliveryEstimate');
+  var textEl = document.getElementById('deliveryText');
+  if (!el || !textEl) return;
+
+  // 基于数量和工艺复杂度估算交货时间
+  var days = 7; // 基础7天
+  if (qty > 5000) days += 3;
+  if (qty > 20000) days += 3;
+
+  // 复杂工艺加时间
+  var complexCrafts = ['烫金', '烫银', '局部UV', '凹凸', '镂空', '击凸'];
+  var craftCount = 0;
+  if (crafts && crafts.length) {
+    crafts.forEach(function(c) {
+      if (complexCrafts.indexOf(c) !== -1) craftCount++;
+    });
+  }
+  if (craftCount >= 3) days += 3;
+  else if (craftCount >= 1) days += 2;
+
+  var endDays = days + 3; // 区间上限
+  textEl.textContent = '预计 ' + days + '-' + endDays + ' 个工作日交货';
+  el.style.display = 'flex';
+}
+
+/* ===================================================
+   11. 监听输入变化，自动计算
 =================================================== */
 (function () {
   var qtyInput = document.getElementById('fqty');
@@ -450,6 +549,16 @@ function resetOffer() {
   ['flen', 'fwid', 'fhei'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener('input', autoCalculatePrice);
+  });
+
+  // 纸张克重变更
+  document.querySelectorAll('input[name="paper_weight"]').forEach(function (radio) {
+    radio.addEventListener('change', autoCalculatePrice);
+  });
+
+  // 印刷颜色变更
+  document.querySelectorAll('input[name="print_color"]').forEach(function (radio) {
+    radio.addEventListener('change', autoCalculatePrice);
   });
 })();
 

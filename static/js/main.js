@@ -146,6 +146,12 @@
     io.observe(el);
   });
 
+  // 通用 animate-in 观察：模板中直接使用 animate-in 类的元素
+  var allAnimateIn = document.querySelectorAll('.animate-in:not(.visible)');
+  allAnimateIn.forEach(function (el) {
+    io.observe(el);
+  });
+
   // 数字动画 Observer
   const counterEls = document.querySelectorAll('.stat-num[data-target]');
   const counterIO = new IntersectionObserver(function (entries) {

@@ -168,7 +168,7 @@ def _register_frontend_routes(app):
     @app.route('/products')
     def products():
         category = request.args.get('category', '')
-        keyword = request.args.get('q', '')
+        keyword = request.args.get('keyword', '') or request.args.get('q', '')
         page = request.args.get('page', 1, type=int)
 
         query = StockProduct.query.filter_by(is_active=True)
@@ -581,6 +581,9 @@ def _register_api_routes(app):
             quantity=quantity,
             material=data.get('material', ''),
             craft=data.get('craft', ''),
+            print_color=data.get('print_color', ''),
+            paper_weight=data.get('paper_weight', ''),
+            need_sample=data.get('need_sample') == '1',
             remark=data.get('remark', ''),
             file_name=file_name,
             estimated_price_min=float(data.get('price_min') or 0) or None,

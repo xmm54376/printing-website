@@ -364,6 +364,9 @@ class Inquiry(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     material = db.Column(db.String(100))
     craft = db.Column(db.String(200))
+    print_color = db.Column(db.String(50))     # 印刷颜色
+    paper_weight = db.Column(db.String(20))    # 纸张克重
+    need_sample = db.Column(db.Boolean, default=False)  # 是否需要打样
     remark = db.Column(db.Text)
     file_name = db.Column(db.String(200))
     # 估算价格
