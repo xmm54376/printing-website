@@ -659,6 +659,34 @@ def _register_api_routes(app):
         db.session.commit()
         return jsonify({'ok': True, 'msg': '留言提交成功，我们会尽快回复您！'})
 
+    @app.route('/api/chat', methods=['POST'])
+    def api_chat():
+        """在线客服聊天消息保存到留言系统"""
+        data = request.get_json() or {}
+        message = data.get('message', '').strip()
+        if not message:
+            return jsonify({'ok': False, 'msg': '消息不能为空'})
+
+        # 尝试获取已登录用户信息
+        user_id = session.get('user_id')
+        if user_id:
+            user = FrontUser.query.get(user_id)
+            if user:
+                msg = ContactMessage(
+                    name=user.real_name or user.username,
+                    phone=user.phone or '',
+                    email=user.email or '',
+                    message=f'[在线客服] {message}'
+                )
+            else:
+                msg = ContactMessage(name='访客', phone='', message=f'[在线客服] {message}')
+        else:
+            msg = ContactMessage(name='访客', phone='', message=f'[在线客服] {message}')
+
+        db.session.add(msg)
+        db.session.commit()
+        return jsonify({'ok': True, 'msg': '消息已收到，客服会尽快回复！'})
+
     @app.route('/api/user/register', methods=['POST'])
     def api_user_register():
         data = request.get_json() or {}
@@ -1038,13 +1066,29 @@ def _register_admin_routes(app):
         db.session.commit()
         return jsonify({'ok': True})
 
+    @app.route('/admin/message/<int:mid>/reply', methods=['POST'])
+    @login_required
+    def admin_message_reply(mid):
+        msg = ContactMessage.query.get_or_404(mid)
+        reply_content = request.form.get('reply', '').strip()
+        if not reply_content:
+            flash('回复内容不能为空', 'error')
+            return redirect(url_for('admin_messages'))
+        msg.reply = reply_content
+        msg.replied_at = datetime.now()
+        msg.is_read = True
+        db.session.commit()
+        flash('回复已保存', 'success')
+        return redirect(url_for('admin_messages'))
+
     @app.route('/admin/message/<int:mid>/delete', methods=['POST'])
     @login_required
     def admin_message_delete(mid):
         msg = ContactMessage.query.get_or_404(mid)
         db.session.delete(msg)
         db.session.commit()
-        return jsonify({'ok': True})
+        flash('留言已删除', 'success')
+        return redirect(url_for('admin_messages'))
 
     # ── 用户管理（前台用户）──
 
@@ -1402,6 +1446,15 @@ def _register_admin_routes(app):
             flash('订单已更新', 'success')
         return render_template('admin/order_detail.html', order=order)
 
+    @app.route('/admin/order/<int:oid>/delete', methods=['POST'])
+    @login_required
+    def admin_order_delete(oid):
+        order = Order.query.get_or_404(oid)
+        db.session.delete(order)
+        db.session.commit()
+        flash('订单已删除', 'success')
+        return redirect(url_for('admin_orders'))
+
     # ── 报价规则管理 ──
 
     @app.route('/admin/quotation-rules')
@@ -1562,7 +1615,9 @@ def _register_admin_routes(app):
 
 # Gunicorn 入口（模块导入时创建应用实例）
 application = create_app()
+# 确保数据库表结构和迁移在启动时执行
+with application.app_context():
+    init_default_data(application)
 
 if __name__ == '__main__':
-    init_default_data(application)
     application.run(debug=False, host='0.0.0.0', port=5000)

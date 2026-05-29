@@ -146,7 +146,7 @@
                         <td>{{ article.created_at.strftime('%Y-%m-%d') if article.created_at else '' }}</td>
                         <td>
                             <a href="{{ url_for('admin_article_edit', aid=article.id) }}" class="btn btn-sm btn-outline">编辑</a>
-                            <a href="{{ url_for('admin_article_delete', aid=article.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除该文章?')">删除</a>
+                            <form method="POST" action="{{ url_for('admin_article_delete', aid=article.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该文章?')"><button type="submit" class="btn btn-sm btn-danger">删除</button></form>
                         </td>
                     </tr>
                     {% else %}

@@ -267,14 +267,21 @@ function sendChat() {
   if(!msg) return;
   appendMsg(msg, 'user');
   input.value = '';
-  // 模拟自动回复
-  setTimeout(function(){
-    var reply = '感谢您的咨询！您的问题已收到，我们的客服会在工作时间内尽快回复您。如需紧急咨询，请拨打热线：{{ cfg.site_phone }}';
+  // 发送消息到后台
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: msg})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    // 自动回复
+    var reply = '感谢您的咨询！您的消息已收到，我们的客服会在工作时间内尽快回复您。如需紧急咨询，请拨打热线：{{ cfg.site_phone }}';
     for(var key in chatAutoReplies) {
       if(msg.indexOf(key) !== -1) { reply = chatAutoReplies[key]; break; }
     }
-    appendMsg(reply, 'bot');
-  }, 600);
+    setTimeout(function(){ appendMsg(reply, 'bot'); }, 300);
+  }).catch(function(){
+    setTimeout(function(){ appendMsg('网络异常，请稍后再试或拨打热线：{{ cfg.site_phone }}', 'bot'); }, 300);
+  });
 }
 function sendQuickReply(text) {
   document.getElementById('chatInput').value = text;

@@ -448,6 +448,8 @@ class ContactMessage(db.Model):
     email = db.Column(db.String(100))
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
+    reply = db.Column(db.Text, default='')
+    replied_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 
@@ -472,6 +474,9 @@ def init_default_data(app):
     """初始化默认数据（首次运行时）"""
     with app.app_context():
         db.create_all()
+
+        # ── 数据库迁移：为新字段添加列 ──
+        _migrate_db(db)
 
         # ── 超级管理员 ──
         if not AdminUser.query.filter_by(username='admin').first():
@@ -700,3 +705,36 @@ def init_default_data(app):
 
         db.session.commit()
         print('默认数据初始化完成')
+
+
+def _migrate_db(db):
+    """数据库迁移：安全地为已有表添加新列"""
+    import sqlite3
+    db_path = db.engine.url.database
+    if not db_path:
+        return
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # 获取已有列信息
+    def get_columns(table_name):
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        return {row[1] for row in cursor.fetchall()}
+
+    migrations = [
+        # (表名, 列名, SQL定义)
+        ('contact_messages', 'reply', 'TEXT DEFAULT ""'),
+        ('contact_messages', 'replied_at', 'DATETIME'),
+    ]
+
+    for table, column, col_def in migrations:
+        try:
+            existing = get_columns(table)
+            if column not in existing:
+                cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_def}')
+                print(f'  迁移: {table}.{column} 已添加')
+        except Exception as e:
+            print(f'  迁移跳过: {table}.{column} - {e}')
+
+    conn.commit()
+    conn.close()

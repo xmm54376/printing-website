@@ -213,6 +213,7 @@
                             <div style="display:flex;gap:10px;">
                                 <button type="submit" class="btn btn-primary">保存更新</button>
                                 <a href="{{ url_for('admin_orders') }}" class="btn btn-outline">返回</a>
+                                <form method="POST" action="{{ url_for('admin_order_delete', oid=order.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该订单?删除后不可恢复!')"><button type="submit" class="btn btn-danger">删除订单</button></form>
                             </div>
                         </form>
                     </div>

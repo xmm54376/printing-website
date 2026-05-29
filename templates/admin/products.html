@@ -159,7 +159,8 @@
                         </td>
                         <td>
                             <a href="{{ url_for('admin_product_edit', pid=product.id) }}" class="btn btn-outline">编辑</a>
-                            <a href="{{ url_for('admin_product_delete', pid=product.id) }}" class="btn btn-danger" onclick="return confirm('确认删除该产品?')">删除</a>
+                            <a href="{{ url_for('admin_product_edit', pid=product.id) }}" class="btn btn-outline">编辑</a>
+                            <form method="POST" action="{{ url_for('admin_product_delete', pid=product.id) }}" style="display:inline;" onsubmit="return confirm('确认删除该产品?')"><button type="submit" class="btn btn-danger">删除</button></form>
                         </td>
                     </tr>
                     {% else %}
