@@ -144,7 +144,7 @@
         <div class="detail-specs">
           <h4>规格参数</h4>
           <table class="spec-table">
-            {% for key, val in product.specs.items() %}
+            {% for key, val in specs.items() %}
             <tr><td>{{ key }}</td><td>{{ val }}</td></tr>
             {% endfor %}
           </table>

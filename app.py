@@ -199,10 +199,18 @@ def _register_frontend_routes(app):
         related = StockProduct.query.filter_by(
             category=product.category, is_active=True
         ).filter(StockProduct.id != pid).limit(4).all()
+        # 解析 specs JSON 字符串
+        specs = {}
+        if product.specs:
+            try:
+                specs = json.loads(product.specs)
+            except (ValueError, TypeError):
+                specs = {}
         cfg = get_site_config()
         return render_template('product_detail.html',
                                product=product,
                                related=related,
+                               specs=specs,
                                cfg=cfg)
 
     @app.route('/about')
@@ -541,7 +549,7 @@ def _register_api_routes(app):
 
         name = data.get('name', '').strip()
         phone = data.get('phone', '').strip()
-        product_type = data.get('product_type', '').strip()
+        product_type = data.get('product_type', '').strip() or data.get('box_name', '').strip()
         quantity_str = data.get('quantity', '0')
 
         if not name:

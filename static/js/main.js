@@ -152,6 +152,17 @@
     io.observe(el);
   });
 
+  // 兜底：3秒后仍有未显示的 animate-in 元素，强制显示
+  setTimeout(function () {
+    var remaining = document.querySelectorAll('.animate-in:not(.visible)');
+    remaining.forEach(function (el) {
+      el.classList.add('visible');
+    });
+    if (remaining.length > 0) {
+      console.warn('[精彩印刷] 强制显示了 ' + remaining.length + ' 个未触发动画的元素');
+    }
+  }, 3000);
+
   // 数字动画 Observer
   const counterEls = document.querySelectorAll('.stat-num[data-target]');
   const counterIO = new IntersectionObserver(function (entries) {
